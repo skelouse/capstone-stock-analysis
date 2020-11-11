@@ -3,9 +3,11 @@
 
 ```
 \--- bin
+\    |  __init.py
 |
 |
 \--- data
+\    |  __init.py
 |
 |
 \--- db
@@ -14,6 +16,7 @@
 |
 |
 \--- img
+\    |  dingus.jpg
 |
 |
 \--- models
