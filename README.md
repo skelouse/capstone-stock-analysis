@@ -9,20 +9,20 @@
 |
 |
 \--- db
-     |  __init__.py
-     |  db.py
+\    |  __init__.py
+\    |  db.py
 |
 |
 \--- img
 |
 |
 \--- models
-     |  __init__.py
+\    |  __init__.py
 |   
 |   
 \--- style
-    |  custom.css
-    |  
+\   |  custom.css
+\   |  
 |
 |
 |  .gitignore
