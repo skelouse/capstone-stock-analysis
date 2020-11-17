@@ -1,0 +1,67 @@
+<style>.shadowbox {
+    width: 40em;
+    border: 1px solid #333;
+    box-shadow: 8px 8px 5px #444;
+    padding: 8px 12px;
+    background-image: linear-gradient(180deg, black, rgb(107, 88, 88));
+    color: rgba(243, 218, 74, 0.801);
+    line-height: 25px;
+    position: static;
+}
+
+h2 {
+    width: 45em;
+    border: 1.5px solid #333;
+    /*box-shadow: 8px 8px 5px #444;*/
+    padding: 8px 12px;
+    background-image: linear-gradient(180deg, #fff, rgb(147, 156, 160));
+    position: static;
+}
+
+h3 {
+    width: 45em;
+    border: 1px solid #333;
+    /*box-shadow: 8px 8px 5px #444;*/
+    padding: 8px 12px;
+    background-image: linear-gradient(180deg, #fff, rgb(147, 156, 160));
+    position: relative;
+    right: -13px;
+}
+
+h4 {
+    width: 45em;
+    border: 0.5px solid #333;
+    /*box-shadow: 8px 8px 5px #444;*/
+    padding: 8px 12px;
+    background-image: linear-gradient(180deg, #fff, rgb(147, 156, 160));
+    position: relative;
+    right: -25px;
+}
+
+.shadow {
+    width: 45em;
+    box-shadow: 8px 8px 10px #444;
+    border: 1px solid silver;
+    margin-top: 2em;
+    position: relative;
+    top: -25px
+}
+
+.package_header {
+    width: 100%;
+    background-color: #0e2b59;
+    color: #ffffff;
+    font-size: 14px;
+    text-align: center;
+    padding-top: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+    padding-left: 8px;
+}
+
+blockquote {
+    border: 1px groove gray;
+    background-color: rgb(214, 218, 219);
+}
+
+</style>

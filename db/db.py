@@ -11,25 +11,27 @@ class DataBase():
     user = os.getenv('USER')
     password = os.getenv('PASSWORD')
 
-    def __init__(self, database_names, port=14333,
-                 db='stock', host='localhost'):
-        conn = MySQLdb.connect(host='localhost', password=self.password,
-                               port=port, db=db, user=self.user)
-        cur = conn.cursor()
+    def __init__(self, db='stock', port=1433, host='localhost'):
+        self.conn = MySQLdb.connect(host=host, password=self.password,
+                                    port=port, db=db, user=self.user)
+        self.cur = self.conn.cursor()
+
+    def pull_names_as_dataframes(self, database_names):
         self.frames = {}
         for name in database_names:
-            cur.execute("SELECT * FROM %s" % name)
-            self.frames[name] = pd.DataFrame(cur.fetchall())
+            self.frames[name] = {}
+            self.cur.execute("SELECT * FROM %s" % name)
+            db_query = self.cur.fetchall()
+            self.cur.execute("Show COLUMNS FROM %s" % name)
+            cols_query = [col[0] for col in self.cur.fetchall()]
+            self.frames[name] = pd.DataFrame(db_query,
+                                             columns=cols_query)
 
 
-if __name__ == "__main__":
+def test():
     import time
     start = time.process_time()
-    names = ['analyst', 'analystranking', 'company', 'performance',
-             'performancepercentiles', 'prices', 'splits']
+    names = ['analyst']
     db = DataBase(names)
     print("Time taken = ", time.process_time() - start)
-    print(len(db.frames['company']))
-
-while True:
-    pass
+    print(db.frames['analyst'].columns)
