@@ -9,8 +9,8 @@
     position: static;
 }
 
-h2 {
-    width: 45em;
+h1 {
+    width: 38em;
     border: 1.5px solid #333;
     /*box-shadow: 8px 8px 5px #444;*/
     padding: 8px 12px;
@@ -18,8 +18,8 @@ h2 {
     position: static;
 }
 
-h3 {
-    width: 45em;
+h2 {
+    width: 37em;
     border: 1px solid #333;
     /*box-shadow: 8px 8px 5px #444;*/
     padding: 8px 12px;
@@ -28,8 +28,8 @@ h3 {
     right: -13px;
 }
 
-h4 {
-    width: 45em;
+h3 {
+    width: 36em;
     border: 0.5px solid #333;
     /*box-shadow: 8px 8px 5px #444;*/
     padding: 8px 12px;
