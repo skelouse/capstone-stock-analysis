@@ -6,10 +6,6 @@
 \    |  __init.py
 |
 |
-\--- data
-\    |  __init.py
-|
-|
 \--- db
 \    |  __init__.py
 \    |  db.py

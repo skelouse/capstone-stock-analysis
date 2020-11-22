@@ -31,7 +31,10 @@ class DataBase():
 def test():
     import time
     start = time.process_time()
-    names = ['analyst']
-    db = DataBase(names)
-    print("Time taken = ", time.process_time() - start)
-    print(db.frames['analyst'].columns)
+    names = ['performance']
+    db = DataBase('stock', 14333, 'localhost')
+    # print("Time taken = ", time.process_time() - start)
+    # print(db.frames['peformance'].columns)
+    db.pull_names_as_dataframes(names)
+    df_performance = db.frames['performance']
+    print(df_performance.loc[df_performance['TotalReturn1Yr'] == '-15.4\x10098'].iloc[0])
