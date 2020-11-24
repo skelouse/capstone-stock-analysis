@@ -156,4 +156,5 @@ class FireBase():
 
 if __name__ == "__main__":
     fb = FireBase()
-    req = fb.refresh_all_data({'test': 1})
+    req = fb.get_index()
+    print(req)
