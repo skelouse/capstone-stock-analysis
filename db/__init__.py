@@ -1,4 +1,5 @@
-from .db import DataBase
+from .database import DataBase
+from .firebase import FireBase
 
 
-all = [DataBase]
+all = [DataBase, FireBase]
