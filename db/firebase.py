@@ -28,7 +28,7 @@ class FireBase():
 
     def put_new_data(self, data):
         json_data = json.dumps(data)
-        req = requests.update(
+        req = requests.patch(
             self.url
             + "data/"
             + ".json?auth="
