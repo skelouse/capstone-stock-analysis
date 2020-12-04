@@ -389,4 +389,92 @@ if __name__ == "__main__":
     creator.run_test()
 
 
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+
+# from sklearn.metrics import make_scorer
+
+# def calc_score(y_true, y_pred):
+#     # calculate score here
+#     # need to round or get argmax
+#     return score
+
+# model = Kerasclassifier(build)  # this would create the model
+
+# # overwrite the fit
+# model.fit()
+
+# from sklearn.model_selection import GridSearchCV
+
+# GridSearchCV(scoring=make_scorer(calc_score))
+
+# params = dict(
+#     input_neurons=64
+
+#     # also arguments for .fit(epochs, batch_size, etc)
+# )
+
+# def build(
+#         input_neurons=64,
+#         input_dropout_rate=0,
+#         input_kwargs={},
+#         input_dropout_kwargs={},
+#         optimizer='adam',
+#         loss='mse',
+#         n_hidden_layers=1,
+#         hidden_layer_activation='relu',
+#         hidden_dropout_rate=.3,
+#         hidden_neurons=64,
+#         hidden_kwargs={},
+#         hidden_dropout_kwargs={},
+#         output_layer_kwargs={},
+#         use_early_stopping=True,
+#         early_stopping_kwargs={},
+#         model_compile_kwargs={},
+#         model_fit_kwargs={},
+#         ):
+
+#     # Model creation
+#     model = Sequential()
+
+#     # Input layer
+#     model.add(LSTM(input_neurons,
+#                         input_shape=input_shape,
+#                         **input_kwargs))
+#     if input_dropout_rate != 0:
+#         model.add(Dropout(input_dropout_rate,
+#                                 **input_dropout_kwargs))
+
+#     # Hidden layers
+#     for i in range(n_hidden_layers):
+#         model.add(Dense(hidden_neurons,
+#                                 activation=hidden_layer_activation,
+#                                 **hidden_kwargs))
+#         if hidden_dropout_rate != 0:
+#             model.add(Dropout(hidden_dropout_rate,
+#                                     **hidden_dropout_kwargs))
+
+#     # Output Layer
+#     model.add(Dense(len(y_cols),
+#                             **output_layer_kwargs))
+
+    
+#     # Compile
+#     model.compile(optimizer=optimizer,
+#                         loss=loss,
+#                         **model_compile_kwargs)
+#     return model
+
+#     # Define callbacks
+#     model_callbacks = []
+#     if use_early_stopping:
+#         model_callbacks.append(EarlyStopping(**early_stopping_kwargs))
+
+
+# def different_func():
+#     # Fit
+#     history = model.fit(train_data_gen,
+#                     validation_data=(test_data_gen),
+#                     callbacks=model_callbacks,
+#                     **model_fit_kwargs)
+
 

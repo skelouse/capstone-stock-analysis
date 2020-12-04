@@ -1,0 +1,40 @@
+
+model_creation
+ - split val data  # DONE
+ - make model grid search
+    - build
+    - keras wrapper for compile
+
+ Model--
+    - takes data
+    - columns x
+    - columns y
+
+Make the three models
+ - build prediction graphs for price
+
+in main notebook
+ - take predictions and add to firebase
+
+Edit pull and scrape data
+ - take only days not taken
+ - plug only days not plugged
+ - add company to firebase
+ - add analyst opinions
+
+Website
+ - check todo on dashboard
+ - add date selection
+ - add company info selection? somehow,  maybe split stock search by company
+ - group by symbol on legend, fix legend somehow T_T
+ - add analyst somehow,  possibly make columns into dropdown rather than grid search
+ - add show legend
+ - add clear all, and saving in memory so that a user can refresh page, or come back to their selections
+
+Comment functions
+
+presentation
+
+readme
+
+reorganize main notebook
