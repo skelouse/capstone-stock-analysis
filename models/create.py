@@ -1,5 +1,3 @@
-
-
 import os
 import sys
 import time
@@ -9,6 +7,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from functools import partial
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
@@ -16,38 +15,157 @@ from sklearn.metrics import r2_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Dense, Dropout, LSTM, Embedding
-# from tensorflow.keras.regularizers import l2, l1
 from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.regularizers import l2, l1
+
+import kerastuner as kt
+from keras import backend as K 
 
 
 class NetworkCreator():
-    def __init__(self, df, X_cols, y_cols,
+    def __init__(self, df, X_cols, y_cols, n_days,
                  test_split=250, val_split=20):
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
         self.test_split = test_split
         self.val_split = val_split
+        self.prepare_data(n_days)
 
-    def run_test(self):
+    def prepare_data(self, n_days=1):
         self.clean_cols()
         self.split_dataframes(self.test_split, self.val_split)
         self.split_and_scale_dataframes()
         self.reshape_data()
 
-        self.create_TS_generators(n_days=4)
+        self.create_TS_generators(n_days=n_days)
         self.input_shape = (self.X_train_reshaped.shape[0],
                             self.X_train_reshaped.shape[1])
 
-        # Temp
-        early_stopping_kwargs = dict(monitor='val_loss', patience=25)
-        model_fit_kwargs = dict(epochs=2000, batch_size=64,
-                                verbose=2, shuffle=False)
-        self.model(early_stopping_kwargs=early_stopping_kwargs,
-                   model_fit_kwargs=model_fit_kwargs)
+    def build_and_fit_model(
+        self,
+        hp,
 
-        self.predict_r2_scores()
-        self.display_r2_scores()
+        # Input Layer
+        input_neurons=64,
+        input_dropout_rate=0,
+        use_input_regularizer=0,
+        input_regularizer_penalty=0,
+
+        # Hidden layer
+        n_hidden_layers=1,
+        hidden_layer_activation='relu',
+        hidden_dropout_rate=.3,
+        hidden_neurons=64,
+        use_hidden_regularizer=0,
+        hidden_regularizer_penalty=0,
+
+        # Early Stopping
+        use_early_stopping=True,
+        monitor='val_loss',
+        patience=5,
+
+        # Model fit
+        epochs=2000,
+        batch_size=32,
+        shuffle=False
+                            ):
+
+        # Possible clear old session
+        try:
+            del self.model
+            K.clear_session()
+        except AttributeError:
+            pass
+
+        # Model creation
+        self.model = Sequential()
+
+        #   Input layer
+        #       Regularizer check
+        _reg = None
+        _use_reg = hp.Choice('use_input_regularizer',
+                             use_input_regularizer)
+        if _use_reg:
+            _penalty = hp.Choice('input_regularizer_penalty',
+                                 input_regularizer_penalty)
+            if _use_reg > 1:
+                _reg = l2(_penalty)
+            else:
+                _reg = l1(_penalty)
+
+        #       Add input layer
+        self.model.add(LSTM(hp.Choice('input_neurons', input_neurons),
+                            input_shape=self.input_shape,
+                            kernel_regularizer=_reg))
+
+        #           Dropout layer
+        input_dropout_rate = hp.Choice('input_dropout_rate',
+                                       input_dropout_rate)
+        if input_dropout_rate != 0:
+            self.model.add(Dropout(input_dropout_rate))
+
+        #   Hidden layers
+        #       Regularizer check
+        _reg = None
+        _use_reg = hp.Choice('use_hidden_regularizer',
+                             use_hidden_regularizer)
+        if _use_reg:
+            _penalty = hp.Choice('hidden_regularizer_penalty',
+                                 hidden_regularizer_penalty)
+            if _use_reg > 1:
+                _reg = l2(_penalty)
+            else:
+                _reg = l1(_penalty)
+
+        #       Dropout check
+        hidden_dropout_rate = hp.Choice('hidden_dropout_rate',
+                                        hidden_dropout_rate)
+        for i in range(hp.Choice('n_hidden_layers', n_hidden_layers)):
+            self.model.add(
+                Dense(hp.Choice('hidden_neurons',
+                                hidden_neurons),
+                      activation=hidden_layer_activation,
+                      kernel_regularizer=_reg))
+
+        #       Dropout layer
+            if hidden_dropout_rate != 0:
+                self.model.add(Dropout(hidden_dropout_rate))
+
+        #   Output Layer
+        self.model.add(Dense(len(self.y_cols)))
+
+        #   Compile
+        self.model.compile(optimizer='adam',
+                           loss='mse')
+
+        #   Define callbacks
+        model_callbacks = []
+        monitor = monitor
+        patience = hp.Choice('patience', patience)
+        if use_early_stopping:
+            model_callbacks.append(EarlyStopping(monitor=monitor,
+                                                 patience=patience))
+
+        # Fit partial
+        self.model.fit = partial(
+            self.model.fit,
+            callbacks=model_callbacks,
+            # epochs=hp.Choice('epochs', epochs),
+            batch_size=hp.Choice('batch_size', batch_size),
+            shuffle=shuffle
+            )
+        return self.model
+
+    # def run_test(self):
+    #     early_stopping_kwargs = dict(monitor='val_loss', patience=25)
+    #     model_fit_kwargs = dict(epochs=2000, batch_size=64,
+    #                             verbose=2, shuffle=False)
+    #     self.build_and_fit_model(early_stopping_kwargs=early_stopping_kwargs,
+    #                              model_fit_kwargs=model_fit_kwargs)
+
+    #     self.predict_r2_scores()
+    #     self.display_r2_scores()
 
     def clean_cols(self):
         """
@@ -64,6 +182,20 @@ class NetworkCreator():
                 [col for col in self.df.columns if self.y_cols in col]
             print("Got", len(self.y_cols), "y columns")
 
+    def _contains(self, sub, pri):
+        "https://stackoverflow.com/questions/3847386/how-to-test-if-a-list-contains-another-list"  # noqa
+        M, N = len(pri), len(sub)
+        i, LAST = 0, M-N+1
+        while True:
+            try:
+                found = pri.index(sub[0], i, LAST)  # find first elem in sub
+            except ValueError:
+                return False
+            if pri[found:found+N] == sub:
+                return [found, found+N-1]
+            else:
+                i = found+1
+
     def split_dataframes(self, test_split=250, val_split=20):
         """
         Splits the dataframe into train, test, and validation
@@ -71,6 +203,10 @@ class NetworkCreator():
         if self.X_cols == self.y_cols:
             print('y is the same as x')
             self.df = self.df[self.X_cols]
+        elif ((self._contains(self.y_cols, self.X_cols)[1]
+              - self._contains(self.y_cols, self.X_cols)[0])
+              + 1 == len(self.y_cols)):
+            print("y is in x")
         else:
             print('y is different than x')
             select_cols = self.X_cols + self.y_cols
@@ -136,7 +272,9 @@ class NetworkCreator():
         """
         # Get n_features
         self.X_n_features = self.X_train.shape[1]
+        #print(self.X_train.shape)
         self.y_n_features = self.y_train.shape[1]
+        #print(self.y_train.shape)
 
         # Reshape data
         self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
@@ -293,69 +431,9 @@ class NetworkCreator():
 
     def display_r2_scores(self):
         print("-"*20, "\nr2 scores\n" + "-"*20)
-        print("Training:", self.train_r2)
-        print("Testing:", self.test_r2)
-        print("Validation:", self.val_r2)
-
-    def model(self,
-              input_neurons=64,
-              input_dropout_rate=0,
-              input_kwargs={},
-              input_dropout_kwargs={},
-              optimizer='adam',
-              loss='mse',
-              n_hidden_layers=1,
-              hidden_layer_activation='relu',
-              hidden_dropout_rate=.3,
-              hidden_neurons=64,
-              hidden_kwargs={},
-              hidden_dropout_kwargs={},
-              output_layer_kwargs={},
-              use_early_stopping=True,
-              early_stopping_kwargs={},
-              model_compile_kwargs={},
-              model_fit_kwargs={},
-              ):
-
-        # Model creation
-        self.model = Sequential()
-
-        # Input layer
-        self.model.add(LSTM(input_neurons,
-                            input_shape=self.input_shape,
-                            **input_kwargs))
-        if input_dropout_rate != 0:
-            self.model.add(Dropout(input_dropout_rate,
-                                   **input_dropout_kwargs))
-
-        # Hidden layers
-        for i in range(n_hidden_layers):
-            self.model.add(Dense(hidden_neurons,
-                                 activation=hidden_layer_activation,
-                                 **hidden_kwargs))
-            if hidden_dropout_rate != 0:
-                self.model.add(Dropout(hidden_dropout_rate,
-                                       **hidden_dropout_kwargs))
-
-        # Output Layer
-        self.model.add(Dense(len(self.y_cols),
-                             **output_layer_kwargs))
-
-        # Compile
-        self.model.compile(optimizer=optimizer,
-                           loss=loss,
-                           **model_compile_kwargs)
-
-        # Define callbacks
-        model_callbacks = []
-        if use_early_stopping:
-            model_callbacks.append(EarlyStopping(**early_stopping_kwargs))
-
-        # Fit
-        self.history = self.model.fit(self.train_data_gen,
-                                      validation_data=(self.test_data_gen),
-                                      callbacks=model_callbacks,
-                                      **model_fit_kwargs)
+        print(f"Training:{self.train_r2:.2f}")
+        print(f"Testing:{self.test_r2:.2f}")
+        print(f"Validation:{self.val_r2:.2f}")
 
 
 if __name__ == "__main__":
@@ -387,94 +465,3 @@ if __name__ == "__main__":
 
     creator = NetworkCreator(df, X_cols, y_cols)
     creator.run_test()
-
-
-from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
-
-# from sklearn.metrics import make_scorer
-
-# def calc_score(y_true, y_pred):
-#     # calculate score here
-#     # need to round or get argmax
-#     return score
-
-# model = Kerasclassifier(build)  # this would create the model
-
-# # overwrite the fit
-# model.fit()
-
-# from sklearn.model_selection import GridSearchCV
-
-# GridSearchCV(scoring=make_scorer(calc_score))
-
-# params = dict(
-#     input_neurons=64
-
-#     # also arguments for .fit(epochs, batch_size, etc)
-# )
-
-# def build(
-#         input_neurons=64,
-#         input_dropout_rate=0,
-#         input_kwargs={},
-#         input_dropout_kwargs={},
-#         optimizer='adam',
-#         loss='mse',
-#         n_hidden_layers=1,
-#         hidden_layer_activation='relu',
-#         hidden_dropout_rate=.3,
-#         hidden_neurons=64,
-#         hidden_kwargs={},
-#         hidden_dropout_kwargs={},
-#         output_layer_kwargs={},
-#         use_early_stopping=True,
-#         early_stopping_kwargs={},
-#         model_compile_kwargs={},
-#         model_fit_kwargs={},
-#         ):
-
-#     # Model creation
-#     model = Sequential()
-
-#     # Input layer
-#     model.add(LSTM(input_neurons,
-#                         input_shape=input_shape,
-#                         **input_kwargs))
-#     if input_dropout_rate != 0:
-#         model.add(Dropout(input_dropout_rate,
-#                                 **input_dropout_kwargs))
-
-#     # Hidden layers
-#     for i in range(n_hidden_layers):
-#         model.add(Dense(hidden_neurons,
-#                                 activation=hidden_layer_activation,
-#                                 **hidden_kwargs))
-#         if hidden_dropout_rate != 0:
-#             model.add(Dropout(hidden_dropout_rate,
-#                                     **hidden_dropout_kwargs))
-
-#     # Output Layer
-#     model.add(Dense(len(y_cols),
-#                             **output_layer_kwargs))
-
-    
-#     # Compile
-#     model.compile(optimizer=optimizer,
-#                         loss=loss,
-#                         **model_compile_kwargs)
-#     return model
-
-#     # Define callbacks
-#     model_callbacks = []
-#     if use_early_stopping:
-#         model_callbacks.append(EarlyStopping(**early_stopping_kwargs))
-
-
-# def different_func():
-#     # Fit
-#     history = model.fit(train_data_gen,
-#                     validation_data=(test_data_gen),
-#                     callbacks=model_callbacks,
-#                     **model_fit_kwargs)
-
-
