@@ -1,8 +1,8 @@
-import os
-import sys
-import time
-import datetime
-import importlib
+# import os
+# import sys
+# import time
+# import datetime
+# import importlib
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -14,12 +14,19 @@ from sklearn.metrics import r2_score
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import Dense, Dropout, LSTM, Embedding
+from tensorflow.keras.layers import Dense, Dropout, LSTM
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.regularizers import l2, l1
 
-import kerastuner as kt
-from keras import backend as K 
+# import kerastuner as kt
+from keras import backend as K
+
+
+class DummyHp():
+    """A dummy class for hyperband, used when using parameters
+    and not the lists for tuning"""
+    def Choice(self, x, y):
+        return y
 
 
 class NetworkCreator():
@@ -44,7 +51,7 @@ class NetworkCreator():
 
     def build_and_fit_model(
         self,
-        hp,
+        hp=None,
 
         # Input Layer
         input_neurons=64,
@@ -68,8 +75,17 @@ class NetworkCreator():
         # Model fit
         epochs=2000,
         batch_size=32,
-        shuffle=False
+        shuffle=False,
+
+        # Other
+        dummy_hp=False
                             ):
+
+        if not hp and dummy_hp:
+            hp = DummyHp()
+        elif not hp and not dummy_hp:
+            string = "No hp implemented, did you want dummy_hp=True?"
+            raise AttributeError(string)
 
         # Possible clear old session
         try:
