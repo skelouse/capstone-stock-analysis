@@ -75,8 +75,6 @@ else:
 
 
 # CRONUS
-# ERROR Incompatible shapes: [128,804] vs. [128,402]
-# NEED A CHANGE IN WHAT!?!?!?!
 
 df_analyst = pd.read_pickle("./data/modeling/analyst.pkl")
 df_prices = pd.read_pickle("./data/modeling/prices.pkl")
