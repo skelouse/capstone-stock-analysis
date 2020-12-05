@@ -3,30 +3,44 @@
 
 ```
 \--- bin
-\    |  __init.py
+\    |  __init__.py
+\    |  anomoly.py
+\    |  database-schema.py
+\    |  NN.py
+\    |  out.png
 |
 |
 \--- db
 \    |  __init__.py
-\    |  db.py
+\    |  database.py
+\    |  firebase.py
 |
 |
 \--- img
-\    |  dingus.jpg
+\    |  flow.png
 |
 |
 \--- models
 \    |  __init__.py
+\    |  create.py
+\    |  scratch.py
 |   
 |   
-\--- style
+\--- styles
 \   |  custom.css
 \   |  
 |
 |
 |  .gitignore
+|  dashboard_test.ipynb
+|  Firebase Test.ipynb
 |  main.ipynb
 |  model_creation.ipynb
+|  Old main.ipynb
+|  Old model_creation.ipynb
+|  Old modeling.ipynb
 |  presentation.pdf
+|  Pull and clean data.ipynb
 |  README.md
+|  todo.txt
 ```
