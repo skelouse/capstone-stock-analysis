@@ -1,4 +1,4 @@
-# import os
+import os
 # import sys
 # import time
 # import datetime
@@ -159,6 +159,8 @@ class NetworkCreator():
         model_callbacks = []
         monitor = monitor
         patience = hp.Choice('patience', patience)
+        use_early_stopping = hp.Choice('use_early_stopping',
+                                       use_early_stopping)
         if use_early_stopping:
             model_callbacks.append(EarlyStopping(monitor=monitor,
                                                  patience=patience))
@@ -216,17 +218,20 @@ class NetworkCreator():
         """
         Splits the dataframe into train, test, and validation
         """
-        if self.X_cols == self.y_cols:
-            print('y is the same as x')
-            self.df = self.df[self.X_cols]
-        elif ((self._contains(self.y_cols, self.X_cols)[1]
-              - self._contains(self.y_cols, self.X_cols)[0])
-              + 1 == len(self.y_cols)):
-            print("y is in x")
-        else:
-            print('y is different than x')
-            select_cols = self.X_cols + self.y_cols
-            self.df = self.df[select_cols]
+        try:
+            if self.X_cols == self.y_cols:
+                print('y is the same as x')
+                self.df = self.df[self.X_cols]
+            elif ((self._contains(self.y_cols, self.X_cols)[1]
+                - self._contains(self.y_cols, self.X_cols)[0])
+                + 1 == len(self.y_cols)):
+                print("y is in x")
+            else:
+                print('y is different than x')
+                select_cols = self.X_cols + self.y_cols
+                self.df = self.df[select_cols]
+        except TypeError:
+            print('y is in dataframe but not x')
 
         # Get column indices
         self.column_indices = \
@@ -288,15 +293,15 @@ class NetworkCreator():
         """
         # Get n_features
         self.X_n_features = self.X_train.shape[1]
-        #print(self.X_train.shape)
+        # print(self.X_train.shape)
         self.y_n_features = self.y_train.shape[1]
-        #print(self.y_train.shape)
+        # print(self.y_train.shape)
 
         # Reshape data
         self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
-                                                        self.X_n_features))
+                                                      self.X_n_features))
         self.y_train_reshaped = self.y_train.reshape((len(self.y_train),
-                                                        self.y_n_features))
+                                                      self.y_n_features))
 
         self.X_test_reshaped = self.X_test.reshape((len(self.X_test),
                                                     self.X_n_features))
@@ -304,9 +309,9 @@ class NetworkCreator():
                                                     self.y_n_features))
 
         self.X_val_reshaped = self.X_val.reshape((len(self.X_val),
-                                                    self.X_n_features))
+                                                  self.X_n_features))
         self.y_val_reshaped = self.y_val.reshape((len(self.y_val),
-                                                    self.y_n_features))
+                                                  self.y_n_features))
 
     def create_TS_generators(self, n_days):
         """
@@ -316,15 +321,15 @@ class NetworkCreator():
         # Get data generators
         self.train_data_gen = sequence.TimeseriesGenerator(
                             self.X_train_reshaped,
-                            self.y_train_reshaped,  # [:,column_indices[self.y_cols]],
+                            self.y_train_reshaped,
                             length=self.n_input)
         self.test_data_gen = sequence.TimeseriesGenerator(
                             self.X_test_reshaped,
-                            self.y_test_reshaped,  # [:,column_indices[self.y_cols]],
+                            self.y_test_reshaped,
                             length=self.n_input)
         self.val_data_gen = sequence.TimeseriesGenerator(
                             self.X_val_reshaped,
-                            self.y_val_reshaped,  # [:,column_indices[self.y_cols]],
+                            self.y_val_reshaped,
                             length=self.n_input)
 
     def get_r2_scores_one_y(self, plot=False):
@@ -452,32 +457,32 @@ class NetworkCreator():
         print(f"Validation:{self.val_r2:.2f}")
 
 
-if __name__ == "__main__":
-    USE_GPU = True
-    IGNORE_WARN = True
-    SEED = 42
+# if __name__ == "__main__":
+#     USE_GPU = True
+#     IGNORE_WARN = True
+#     SEED = 42
 
-    np.random.seed(SEED)
-    tf.random.set_seed(SEED)
-    if USE_GPU:
-        # Enable GPU
-        physical_devices = tf.config.list_physical_devices('GPU')
-        tf.config.experimental.set_memory_growth(physical_devices[0],
-                                                 enable=True)
-        os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+#     np.random.seed(SEED)
+#     tf.random.set_seed(SEED)
+#     if USE_GPU:
+#         # Enable GPU
+#         physical_devices = tf.config.list_physical_devices('GPU')
+#         tf.config.experimental.set_memory_growth(physical_devices[0],
+#                                                  enable=True)
+#         os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
-        # Show GPU
-        print("Using GPU")
-        print(tf.config.list_physical_devices('GPU'))
-    else:
-        print("Using CPU")
+#         # Show GPU
+#         print("Using GPU")
+#         print(tf.config.list_physical_devices('GPU'))
+#     else:
+#         print("Using CPU")
 
-    df = pd.read_pickle('./data/modeling/model_df.pkl')
-    # self.X_cols = [col for col in self.df.columns if 'TSLA_price' not in col]
-    # self.y_cols = self.X_cols
-    X_cols = [col for col in df.columns if 'TSLA' in col]
-    y_cols = X_cols
-    n_days = 1
+#     df = pd.read_pickle('./data/modeling/model_df.pkl')
+#     # self.X_cols = [col for col in self.df.columns if 'TSLA_price' not in col]
+#     # self.y_cols = self.X_cols
+#     X_cols = [col for col in df.columns if 'TSLA' in col]
+#     y_cols = X_cols
+#     n_days = 1
 
-    creator = NetworkCreator(df, X_cols, y_cols)
-    creator.run_test()
+#     creator = NetworkCreator(df, X_cols, y_cols)
+#     creator.run_test()

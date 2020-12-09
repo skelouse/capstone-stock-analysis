@@ -1,40 +1,49 @@
+12/5
+ - finish cronus # DONE
+ - start narcissus # DONE
 
-model_creation
- - split val data  # DONE
- - make model grid search
-    - build
-    - keras wrapper for compile
+12/6
+ - finish narcissus # DONE
+ - start hermes # DONE
+ - figure out plugging data # DONE
 
- Model--
-    - takes data
-    - columns x
-    - columns y
+12/7
+ - had to catch up
 
-Make the three models
- - build prediction graphs for price
+12/8
+ - figure out training model on all data # DONE
+ - figure out predicting n_days # DONE
+ - run cronus search when sleep
 
-in main notebook
- - take predictions and add to firebase
+12/9
+ - clean all notebooks
+ - possibly redo main.ipynb as more of a guide
+ - Add documentation
+ - Add more tests in pull and update data
+ - run hermes search when sleep
 
-Edit pull and scrape data
- - take only days not taken
- - plug only days not plugged
- - add company to firebase
- - add analyst opinions
+12/10
+ - build readme
+ - build presentation
+ - run narcissus search when sleep
 
-Website
- - check todo on dashboard
- - add date selection
- - add company info selection? somehow,  maybe split stock search by company
- - group by symbol on legend, fix legend somehow T_T
- - add analyst somehow,  possibly make columns into dropdown rather than grid search
- - add show legend
- - add clear all, and saving in memory so that a user can refresh page, or come back to their selections
+12/11
+- finish readme and presentation
+- if complete
+  - check todo list in dashboard project folder
 
-Comment functions
+12/12
+ - REVIEW DATE
 
-presentation
+12/18 ->
+ - Start cleaning up all readmes, presentations, files, etc
+ - more work on website
+ - add predictions to firebase
+ - add predictions to website
 
-readme
 
-reorganize main notebook
+
+ISSUES:
+in pull and clean data
+   Analyst is front filled, filling some symbols from another
+   - fixed in pull and update data
