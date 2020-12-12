@@ -5,7 +5,7 @@ import pandas as pd
 import tensorflow as tf
 from functools import partial
 import kerastuner as kt
-from create import NetworkCreator
+from create_modified import NetworkCreator
 import sys
 script = """
 --help
@@ -13,7 +13,7 @@ sequence of models i.e 'python script model1 model2'
 Available models:
  - hermes
  - cronus
- - narcissus (Partially trained)
+ - narcissus
 """
 try:
     if sys.argv[1] == "--help":
@@ -59,16 +59,15 @@ parameters = {
 }
 
 
-def run(df, X_cols, y_cols, n_days, name):
+def run(df, X_cols, y_cols, n_days, name, max_epochs):
     creator = NetworkCreator(df, X_cols, y_cols, n_days,
-                             test_split=300, val_split=1)
-
+                             test_split=300, val_split=False)
     creator.build_and_fit_model = partial(
         creator.build_and_fit_model, **parameters
     )
     tuner = kt.Hyperband(creator.build_and_fit_model,
                          objective='val_loss',
-                         max_epochs=500,
+                         max_epochs=max_epochs,
                          factor=3,
                          directory='./tuner_directory',
                          project_name=name)
@@ -86,7 +85,7 @@ def run(df, X_cols, y_cols, n_days, name):
 
 
 # HERMES
-def hermes():
+def hermes(n_days, max_epochs):
     # Hermes is company and performance
     df_hermes = pd.read_pickle("./data/modeling/hermes.pkl")
     df_analyst = pd.read_pickle("./data/modeling/analyst.pkl")
@@ -94,30 +93,34 @@ def hermes():
               if col not in df_analyst.columns]
     y_cols = [col for col in df_hermes.columns
               if col in df_analyst.columns]
-    n_days = 44
-    run(df_hermes, X_cols, y_cols, n_days, 'Hermes')
+    run(df_hermes, X_cols, y_cols, n_days, 'Hermes', max_epochs)
 
 
 # NARCISSUS
-def narcissus():
+def narcissus(n_days, max_epochs):
     df_performance = pd.read_pickle("./data/modeling/performance.pkl")
     X_cols = list(df_performance.columns)
     y_cols = X_cols
-    n_days = 44
-    run(df_performance, X_cols, y_cols, n_days, 'Narcissus')
+    run(df_performance, X_cols, y_cols, n_days, 'Narcissus', max_epochs)
 
 
 # CRONUS
-def cronus():
+def cronus(n_days, max_epochs):
     df_analyst = pd.read_pickle("./data/modeling/analyst.pkl")
     df_prices = pd.read_pickle("./data/modeling/prices.pkl")
 
     df_cronus = pd.concat([df_analyst, df_prices], axis=1)
     X_cols = list(df_cronus.columns)
     y_cols = list(df_prices.columns)
-    # n_days = 15 # .59
-    n_days = 44
-    run(df_cronus, X_cols, y_cols, n_days, 'Cronus')
+    run(df_cronus, X_cols, y_cols, n_days, 'Cronus', max_epochs)
+
+
+# Combined model
+def all(n_days, max_epochs):
+    model_df = pd.read_pickle("./data/modeling/model_df.pkl")
+    X_cols = list(model_df.columns)
+    y_cols = list(model_df.columns)
+    run(model_df, X_cols, y_cols, n_days, 'All', max_epochs)
 
 
 if __name__ == "__main__":
@@ -125,16 +128,27 @@ if __name__ == "__main__":
     if isinstance(models, str):
         models = list(models)
     print('TRAINING: ', models)
-    print("Starting in 10 seconds")
-    print("Have you update me and my data?")
-    print("")
-    for i in list(range(10))[::-1]:
-        time.sleep(1)
-        print(i, end='\r')
+    df_prices = pd.read_pickle("./data/modeling/prices.pkl")
+    newest_day = df_prices.iloc[[-1]].index[0].strftime("%Y-%m-%d")
+    input(f"\n\nData last updated {newest_day} @ 8PM, okay? ( press enter )\n\n")
+    max_epochs = 5000
+    # Query here for n_days and max_epochs
+
     for model in models:
+        print(f"TRAINING {model}!")
+        print(f"max_epochs -> {max_epochs}")
+        print("\nStarting in 10 seconds")
+        print("")
+        with open("current.txt", 'w') as f:
+            f.write(model)
+        for i in list(range(10))[::-1]:
+            time.sleep(1)
+            print(f'  {i}', end='\r')
         if model == 'hermes':
-            hermes()
+            hermes(3, max_epochs)
         elif model == 'cronus':
-            cronus()
+            cronus(43, max_epochs)
         elif model == 'narcissus':
-            narcissus()
+            narcissus(43, max_epochs)
+        elif model == 'all':
+            all(4, max_epochs)

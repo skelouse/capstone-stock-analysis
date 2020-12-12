@@ -22,30 +22,32 @@ from .create import NetworkCreator
 class NetworkLoader():
     def __init__(self, df, X_cols, y_cols, model_name,
                  n_days=4, split=20,
-                 tuner_directory='E:/capstone/Tuners'):
-        if model_name.title() not in ['Hermes', 'Cronus', 'Narcissus']:
+                 tuner_directory='E:/capstone/tuner_directory'):
+        self.name = model_name.title()
+        if self.name not in ['Hermes', 'Cronus', 'Narcissus', 'All']:
             raise NameError("%s is not a valid model name"
-                            % model_name.title())
+                            % self.name)
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
         self.n_days = n_days
         self.tuner_directory = tuner_directory
         self.test_split = split
-        self.prepare_data(model_name.title())
+        self.prepare_data()
 
-    def prepare_data(self, name):
+    def prepare_data(self):
+        print("Preparing loader data")
         self.clean_cols()
         self.split_dataframes(self.test_split)
         self.split_and_scale_dataframes()
         self.reshape_data()
-
         self.create_TS_generators(n_days=self.n_days)
-        self.input_shape = (self.X_train_reshaped.shape[0],
-                            self.X_train_reshaped.shape[1])
-        #self.parameters = self.load_parameters(name)
+        self.input_shape = (self.X_reshaped.shape[0],
+                            self.X_reshaped.shape[1])
+        self.load_parameters()
+        print("Loader complete")
 
-    def load_parameters(self, name):
+    def load_parameters(self):
         parameters = {
             'input_neurons': [16, 32, 64],
             'input_dropout_rate': [.1, .3, .5],
@@ -60,32 +62,80 @@ class NetworkLoader():
             'batch_size': [32, 64, 128],
             'use_early_stopping': [0, 1]
         }
+        print("Making creator")
         self.creator = NetworkCreator(
             self.df,
             self.X_cols,
             self.y_cols,
-            self.n_days)
-        print("Making creator")
+            1)
         self.creator.build_and_fit_model = partial(
             self.creator.build_and_fit_model, **parameters
                                              )
         tuner = kt.Hyperband(self.creator.build_and_fit_model,
                              objective='val_loss',
-                             max_epochs=5000,
+                             max_epochs=1000,
                              directory=self.tuner_directory,
-                             project_name=name.title())
+                             project_name=self.name)
 
         # tuner.search(self.creator.train_data_gen,
         #              validation_data=(self.creator.test_data_gen))
-        print("Getting top_10_hps")
-        self.top_10_hps = tuner.get_best_hyperparameters(num_trials=10)
-         # .__dict__['values'])
-
-    def predict_n_days(self, n_days):
-        pass
+        print("Getting top hyper-parameters for:", self.name)
+        parameters = tuner.get_best_hyperparameters(num_trials=1)
+        parameters = parameters[0].__dict__['values']
+        parameters = dict([(key, value) for key, value in parameters.items()
+                        if 'tuner' not in key])
+        self.parameters = parameters
+        print("Creator made")
 
     def choice_wrap(self, x, y):
         return y
+
+    def get_predictions(self):
+        try:
+            return self.predictions
+        except NameError:
+            print("No predictions yet from", self.name)
+
+    def build_fit_predict(self, epochs=1000, fit_args=None):
+        if not self.build_model(**self.parameters):
+            print("Issue in building")
+            return False
+        if not self.fit_model(epochs=epochs, fit_args=fit_args):
+            print("Issue with fitting")
+            return False
+        self.predict_model()
+        return True
+
+    def predict_model(self):
+        print("Predicting with", self.name)
+        out_columns = self.y_cols
+        prediction = self.model.predict(self.data_gen)
+        if self.X_cols == self.y_cols:
+            prediction = self.X_scaler.inverse_transform(prediction)
+        else:
+            prediction = self.y_scaler.inverse_transform(prediction)
+        self.predictions = pd.DataFrame(prediction,
+                                        columns=out_columns).iloc[[0]]
+        return True
+
+    def fit_model(self, epochs, fit_args):
+        print("Fitting with", self.name)
+        try:
+            if fit_args:
+                self.history = self.model.fit(
+                    self.data_gen,
+                    epochs=epochs,
+                    **fit_args
+                )
+            else:
+                self.history = self.model.fit(
+                    self.data_gen,
+                    epochs=epochs
+                )
+        except NameError:
+            print("No model, have you built the model")
+            return False
+        return True
 
     def build_model(
         self,
@@ -115,6 +165,7 @@ class NetworkLoader():
         shuffle=False,
                    ):
 
+        print("Building with", self.name)
         # Possible clear old session
         try:
             del self.model
@@ -201,7 +252,7 @@ class NetworkLoader():
             batch_size=self.choice_wrap('batch_size', batch_size),
             shuffle=shuffle
             )
-        return self.model
+        return True
 
     def clean_cols(self):
         """
@@ -253,7 +304,6 @@ class NetworkLoader():
         self.df_train = self.df.iloc[:-test_split].copy()
         self.df_test = self.df.iloc[-test_split:].copy()
 
-
     def split_and_scale_dataframes(self):
         """
         Scales and splits the data into X and y of each
@@ -297,17 +347,17 @@ class NetworkLoader():
 
             # Scale data
             self.df_scaled = self.X_scaler.fit_transform(self.df)
-            self.df_train_scaled = self.X_scaler.transform(self.df_train)
-            self.df_test_scaled = self.X_scaler.transform(self.df_test)
+            # self.df_train_scaled = self.X_scaler.transform(self.df_train)
+            # self.df_test_scaled = self.X_scaler.transform(self.df_test)
 
             # Split data
 
             self.X = self.df_scaled.copy()
             self.y = self.df_scaled.copy()
-            self.X_train = self.df_train_scaled.copy()
-            self.y_train = self.df_train_scaled.copy()
-            self.X_test = self.df_test_scaled.copy()
-            self.y_test = self.df_test_scaled.copy()
+            # self.X_train = self.df_train_scaled.copy()
+            # self.y_train = self.df_train_scaled.copy()
+            # self.X_test = self.df_test_scaled.copy()
+            # self.y_test = self.df_test_scaled.copy()
 
     def reshape_data(self):
         """
@@ -327,15 +377,15 @@ class NetworkLoader():
 
 
 
-        self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
-                                                      self.X_n_features))
-        self.y_train_reshaped = self.y_train.reshape((len(self.y_train),
-                                                      self.y_n_features))
+        # self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
+        #                                               self.X_n_features))
+        # self.y_train_reshaped = self.y_train.reshape((len(self.y_train),
+        #                                               self.y_n_features))
 
-        self.X_test_reshaped = self.X_test.reshape((len(self.X_test),
-                                                    self.X_n_features))
-        self.y_test_reshaped = self.y_test.reshape((len(self.y_test),
-                                                    self.y_n_features))
+        # self.X_test_reshaped = self.X_test.reshape((len(self.X_test),
+        #                                             self.X_n_features))
+        # self.y_test_reshaped = self.y_test.reshape((len(self.y_test),
+        #                                             self.y_n_features))
 
     def create_TS_generators(self, n_days):
         """
@@ -346,7 +396,7 @@ class NetworkLoader():
         self.data_gen = sequence.TimeseriesGenerator(
                             self.X_reshaped,
                             self.y_reshaped,
-                            length=self.n_input)
+                            self.n_input)
 
 
         # self.train_data_gen = sequence.TimeseriesGenerator(

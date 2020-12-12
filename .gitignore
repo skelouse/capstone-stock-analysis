@@ -139,3 +139,4 @@ tuner_directory
 models/working_create.py
 models/working_scratch.py
 models/grid_search_attempt.py
+db/scratch.py
