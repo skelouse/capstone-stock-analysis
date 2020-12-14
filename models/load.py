@@ -21,8 +21,8 @@ from .create import NetworkCreator
 
 class NetworkLoader():
     def __init__(self, df, X_cols, y_cols, model_name,
-                 n_days=4, split=20,
-                 tuner_directory='E:/capstone/tuner_directory'):
+                 n_days=4, split=20, # make split decimal
+                 tuner_directory='./tuner_directory'):
         self.name = model_name.title()
         if self.name not in ['Hermes', 'Cronus', 'Narcissus', 'All']:
             raise NameError("%s is not a valid model name"

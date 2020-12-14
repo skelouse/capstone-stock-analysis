@@ -1,11 +1,12 @@
 import os
+import shutil
 import time
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from functools import partial
 import kerastuner as kt
-from create_modified import NetworkCreator
+from create import NetworkCreator
 import sys
 script = """
 --help
@@ -44,7 +45,7 @@ else:
     print("Using CPU")
 
 parameters = {
-    'input_neurons': [16, 32, 64],
+    'input_neurons': [2, 4, 8, 16],
     'input_dropout_rate': [.1, .3, .5],
     'use_input_regularizer': [0, 1, 2],
     'input_regularizer_penalty': [0.01, 0.05, 0.1, 0.3],
@@ -59,18 +60,53 @@ parameters = {
 }
 
 
+class Logger():
+    x = 0
+
+    @classmethod
+    def clear_checkpoints(cls):
+        print("Clearing checkpoints")
+        project_files = os.listdir(cls.filepath)
+        for file in project_files:
+            try:
+                shutil.rmtree(cls.filepath+file+'/checkpoints')
+            except FileNotFoundError:
+                pass
+
+    @classmethod
+    def report_trial_state(cls, *args):
+        cls.x += 1
+        print("trial", cls.x)
+        if cls.x >= 5:
+            cls.clear_checkpoints()
+            cls.x = 0
+
+    @classmethod
+    def register_directory(cls, name):
+        cls.filepath = f'./tuner_directory/{name}/'
+
+    def register_tuner(*args):
+        pass
+
+    def register_trial(*args):
+        pass
+
+
+
 def run(df, X_cols, y_cols, n_days, name, max_epochs):
     creator = NetworkCreator(df, X_cols, y_cols, n_days,
                              test_split=300, val_split=False)
     creator.build_and_fit_model = partial(
         creator.build_and_fit_model, **parameters
     )
+    Logger.register_directory(name)
     tuner = kt.Hyperband(creator.build_and_fit_model,
                          objective='val_loss',
                          max_epochs=max_epochs,
                          factor=3,
                          directory='./tuner_directory',
-                         project_name=name)
+                         project_name=name,
+                         logger=Logger)
 
     tuner.search(creator.train_data_gen,
                  validation_data=(creator.test_data_gen))
@@ -122,6 +158,11 @@ def all(n_days, max_epochs):
     y_cols = list(model_df.columns)
     run(model_df, X_cols, y_cols, n_days, 'All', max_epochs)
 
+def sym(n_days, max_epochs, symbol):
+    model_df = pd.read_pickle("./data/modeling/model_df.pkl")
+    X_cols = list(model_df.columns)
+    y_cols = f'{symbol}_price'
+    run(model_df, X_cols, y_cols, n_days, symbol.lower(), max_epochs)
 
 if __name__ == "__main__":
     models = sys.argv[1::]
@@ -129,6 +170,8 @@ if __name__ == "__main__":
         models = list(models)
     print('TRAINING: ', models)
     df_prices = pd.read_pickle("./data/modeling/prices.pkl")
+    all_symbols = pd.read_pickle('./data/prices.pkl').reset_index() \
+        .set_index('date', drop=True)['sym'].unique()
     newest_day = df_prices.iloc[[-1]].index[0].strftime("%Y-%m-%d")
     input(f"\n\nData last updated {newest_day} @ 8PM, okay? ( press enter )\n\n")
     max_epochs = 5000
@@ -141,9 +184,9 @@ if __name__ == "__main__":
         print("")
         with open("current.txt", 'w') as f:
             f.write(model)
-        for i in list(range(10))[::-1]:
-            time.sleep(1)
-            print(f'  {i}', end='\r')
+        # for i in list(range(10))[::-1]:
+        #     time.sleep(1)
+        #     print(f'  {i}', end='\r')
         if model == 'hermes':
             hermes(3, max_epochs)
         elif model == 'cronus':
@@ -152,3 +195,16 @@ if __name__ == "__main__":
             narcissus(43, max_epochs)
         elif model == 'all':
             all(4, max_epochs)
+        elif model.upper() in all_symbols:
+            sym(4, max_epochs, model.upper())
+
+
+
+# filepath = './tuner_directory/aapl/'
+
+# project_files = os.listdir(filepath)
+# for file in project_files:
+#     try:
+#         shutil.rmtree(filepath+file+'/checkpoints')
+#     except FileNotFoundError:
+#         pass
