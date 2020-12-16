@@ -1,5 +1,6 @@
 from inspect import Parameter
 import os
+import shap
 # import sys
 # import time
 # import datetime
@@ -8,10 +9,15 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from functools import partial
+from IPython.display import Markdown, display
 
+
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, ConfusionMatrixDisplay, \
+                            confusion_matrix
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
@@ -33,7 +39,7 @@ class DummyHp():
 
 class NetworkCreator():
     def __init__(self, df, X_cols, y_cols, n_days,
-                 test_split=250, val_split=20):
+                 test_split=.3, val_split=.05):
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
@@ -255,26 +261,49 @@ class NetworkCreator():
             else:
                 i = found+1
 
-    def split_dataframes(self, test_split=250, val_split=20):
+    @classmethod
+    def split_perc(cls, df, test_split=.3, val_split=.05):
+        if val_split:
+            total_split = test_split + val_split
+            train, test_val = train_test_split(
+                df, test_size=total_split, shuffle=False)
+            real_split = val_split/test_split
+            val, test = train_test_split(
+                test_val, train_size=real_split, shuffle=False)
+            return train, val, test
+        else:
+            train, test = train_test_split(
+                df, test_size=test_split, shuffle=False)
+            return train, test
+
+    def split_dataframes(self, test_split=.3, val_split=.05):
         """
         Splits the dataframe into train, test, and validation
         """
         try:
             if len(self.y_cols) == 1:
                 print("y is in x")
+                select_cols = self.X_cols + self.y_cols
+                self.df = self.df[select_cols]
+
             elif self.X_cols == self.y_cols:
                 print('y is the same as x')
                 self.df = self.df[self.X_cols]
+
             elif ((self._contains(self.y_cols, self.X_cols)[1]
                 - self._contains(self.y_cols, self.X_cols)[0])
                 + 1 == len(self.y_cols)):
                 print("y is in x")
+
             else:
                 print('y is different than x')
                 select_cols = self.X_cols + self.y_cols
                 self.df = self.df[select_cols]
+
         except TypeError:
             print('y is in dataframe but not x')
+            select_cols = self.X_cols + self.y_cols
+            self.df = self.df[select_cols]
 
         # Get column indices
         self.column_indices = \
@@ -286,12 +315,14 @@ class NetworkCreator():
         # Move val data into the middle rather than at the end
         # Split dataframes
         if val_split:
-            self.df_train = self.df.iloc[:test_split].copy()
-            self.df_test = self.df.iloc[test_split:-val_split].copy()
-            self.df_val = self.df.iloc[-val_split::].copy()
+            train, val, test = self.split_perc(self.df, test_split, val_split)
+            self.df_train = train
+            self.df_test = test
+            self.df_val = val
         else:
-            self.df_train = self.df.iloc[:test_split].copy()
-            self.df_test = self.df.iloc[test_split:].copy()
+            train, test = self.split_perc(self.df, test_split, val_split=0)
+            self.df_train = train
+            self.df_test = test
 
     def split_and_scale_dataframes(self):
         """
@@ -318,12 +349,12 @@ class NetworkCreator():
             # Split data
             self.y_col_idx = self.column_indices[self.y_cols[0]]
 
-            self.X_train = self.df_train_scaled.copy()
+            self.X_train = self.df_train_scaled[:, :self.y_col_idx].copy()
             self.y_train = self.df_train_scaled[:, self.y_col_idx].copy()
-            self.X_test = self.df_test_scaled.copy()
+            self.X_test = self.df_test_scaled[:, :self.y_col_idx].copy()
             self.y_test = self.df_test_scaled[:, self.y_col_idx].copy()
             if self.val_split:
-                self.X_val = self.df_val_scaled.copy()
+                self.X_val = self.df_val_scaled[:, :self.y_col_idx].copy()
                 self.y_val = self.df_val_scaled[:, self.y_col_idx].copy()
 
         elif self.X_cols != self.y_cols:  # Accounting for another scaler
@@ -420,7 +451,7 @@ class NetworkCreator():
                                 self.y_val_reshaped,
                                 length=self.n_input)
 
-    def get_r2_scores_one_y(self):
+    def get_r2_scores_one_y(self, _print=False):
         cols = self.y_cols + ['predicted']
 
         # Training data
@@ -441,7 +472,8 @@ class NetworkCreator():
         self.train_y_true = self.X_scaler\
             .inverse_transform(temp_df)[:, self.y_col_idx]
         self.train_r2 = r2_score(self.train_y_true, self.train_y_pred)
-        print("train_r2", self.train_r2)
+        if _print:
+            print(f"train_r2:{self.train_r2: .2f}")
 
         # Testing data
         test_prediction = self.model.predict(self.test_data_gen)
@@ -457,7 +489,8 @@ class NetworkCreator():
         self.test_y_true = self.X_scaler\
             .inverse_transform(temp_df)[:, self.y_col_idx]
         self.test_r2 = r2_score(self.test_y_true, self.test_y_pred)
-        print("test_r2", self.test_r2)
+        if _print:
+            print(f"test_r2:{self.test_r2: .2f}")
 
         # Validation data
         if self.val_split:
@@ -474,7 +507,8 @@ class NetworkCreator():
             self.val_y_true = self.X_scaler\
                 .inverse_transform(temp_df)[:, self.y_col_idx]
             self.val_r2 = r2_score(self.val_y_true, self.val_y_pred)
-            print("val_r2", self.val_r2)
+            if _print:
+                print(f"val_r2:{self.val_r2: .2f}", )
 
     def get_r2_scores_multi_y(self):
         # Training data
@@ -540,11 +574,11 @@ class NetworkCreator():
             y_true_val = self.df_val.loc[self.df_predict_val.index]
             self.val_r2 = r2_score(y_true_val, self.df_predict_val)
 
-    def predict_r2_scores(self):
+    def predict_r2_scores(self, _print=False):
         # Predictions (r2_score)
         # If predicting one column for y
         if (len(self.y_cols) == 1):
-            self.get_r2_scores_one_y()
+            self.get_r2_scores_one_y(_print)
 
         # If predicting multiple columns for y
         elif self.y_scaler:
@@ -569,46 +603,235 @@ class NetworkCreator():
             sets = ['train', 'test', 'val']
         elif not sets:
             sets = ['train', 'test']
-        fig, axes = plt.subplots(nrows=len(sets), figsize=(15, 10),
-                                 ncols=2, squeeze=False,
-                                 gridspec_kw=dict(hspace=.5))
+        height = ((len(sets)) * 3) + 3
+        width = ((len(sets)) * 5)
+        fig, axes = plt.subplots(figsize=(width, height),
+                                 nrows=len(sets)+1, ncols=2,
+                                 constrained_layout=True,
+                                 squeeze=False, gridspec_kw=dict(hspace=.5))
+
+        gs = axes[0][0].get_gridspec()
+        for ax in axes[len(sets)]:
+            ax.remove()
+
+        _preds = []
+        _Xs = []
         for num, _set in enumerate(sets):
             ax1, ax2 = axes[num]
+            markersize = (num+1.5)*3
 
             _idx = self.__dict__[f"df_{_set}"].index
             _real = self.__dict__[f"df_{_set}"][self.y_cols]
             _true = self.__dict__[f"{_set}_y_true"]
             _pred = self.__dict__[f"{_set}_y_pred"]
-            ax1.plot(_idx, _real, marker=marker)
-
+            _preds.append(_pred)
+            _r2 = self.__dict__[f"{_set}_r2"]
+            ax1.plot(_idx, _real, marker=marker,
+                     color='C0', label='Real Price',
+                     markersize=markersize)
             _X = self.__dict__[f"df_{_set}"].index[self.n_input:]
-            ax1.plot(_X, _true, marker=marker)
-            ax1.plot(_X, _pred, marker=marker)
-            ax2.plot(_X, _pred, marker=marker)
+            _Xs.append(_X)
+            ax1.plot(_X, _true, marker=marker, color='C1', label='y_true',
+                     markersize=markersize)
+            ax1.plot(_X, _pred, marker=marker, color='C2', label='y_pred',
+                     linewidth=3.5, markersize=markersize, alpha=.7)
+
+            ax2.plot(_X, _pred, marker=marker, color='C2', linewidth=3.5,
+                     markersize=markersize, alpha=.7)
 
             # Plot styling
             #    Left side
             ax1.set_title(f"""{_set.title()} data with an r2 of: {
-                            self.test_r2}""")
-            ax1.legend(labels=["Real_price", "y_true", "y_pred"])
-            ax1.set_ylabel("Price")
+                            _r2: .2f}""", fontsize=20)
+            ax1.legend()
+            length = len(_X)
 
             #    Right side
-            ax2.set_title("Predicted")
+            ax2.set_title("Predicted", fontsize=20)
 
             #    Both
             for ax in axes[num]:
+                ax.xaxis.set_major_locator(ticker.MultipleLocator(
+                                            int(length/4)))
                 plt.setp(ax.get_xticklabels(), ha="right", rotation=20)
-                ax.set_ylabel("Price")
+                ax.set_ylabel("Price", fontsize=15)
 
-        # Bottom 2
+        ax = fig.add_subplot(gs[len(sets), :])
+
+        X = self.df.index
+        ax.plot(X, self.df[self.y_cols],
+                label='y_true', linewidth=3)
+
+        for name, pred, idx in zip(sets, _preds, _Xs):
+            ax.plot(idx, pred, label=f"{name}-pred", alpha=.6, linewidth=4)
+        ax.legend()
+        ax.set_title("Actual VS predicted", fontsize=20)
+        ax.set_ylabel("Price", fontsize=15)
+        return fig
+
+    def get_shap_values(self):
+        first = int(self.val_data_gen.data.shape[0]/self.n_input)
+        last = self.val_data_gen.data.shape[1]
+
+        explainer = shap.GradientExplainer(self.model,
+                                           self.val_data_gen.data)
+        self.shap_val = explainer.shap_values(
+            self.val_data_gen.data.reshape((first, self.n_input, last)), 1)
+
+    def plot_shap_summary(self):
         try:
-            for ax in axes[num]:
-                ax.set_xlabel("Date")
-        except NameError:
-            pass
+            shap_val_total = self.shap_val[0].sum(axis=1)
+        except AttributeError:
+            self.get_shap_values()
+            shap_val_total = self.shap_val[0].sum(axis=1)
+        shap.summary_plot(
+            shap_val_total,
+            feature_names=list(self.X_cols),
+            plot_type='bar',
+            show=False)
+        fig = plt.gcf()
+        plt.tight_layout()
+        plt.show()
+        return fig
 
+    def plot_shap_bar(self):
+        try:
+            shap_val_x_day = np.array(self.shap_val) \
+                .sum(axis=1).sum(axis=1)[0]
+        except AttributeError:
+            self.get_shap_values()
+            shap_val_x_day = np.array(self.shap_val) \
+                .sum(axis=1).sum(axis=1)[0]
+        shap.bar_plot(
+            shap_val_x_day,
+            feature_names=list(self.X_cols),
+            show=False)
+        fig = plt.gcf()
+        plt.tight_layout()
+        plt.show()
+        return fig
 
+    def classify_set(self, _set):
+        true = self.__dict__[f'{_set}_y_true']
+        pred = self.__dict__[f'{_set}_y_pred']
+        df = pd.DataFrame({
+            'true': true,
+            'pred': pred
+        })
+        df = df.diff().dropna()
+        func = (lambda x: 1 if x > 0 else 0)
+        df['true'] = df['true'].apply(func)
+        df['pred'] = df['pred'].apply(func)
+        r2 = r2_score(df['true'], df['pred'])
+        return confusion_matrix(df['true'], df['pred'], normalize='all'), r2
+
+    def plot_classification(self, cm, ax, classes=['Down', 'Up']):
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                      display_labels=classes)
+        return disp.plot(include_values=True, cmap='Blues', ax=ax)
+
+    def classify(self):
+        title_map = self.get_title_map()
+        n = len(title_map.keys())
+        fig, axes = plt.subplots(
+            figsize=(15, 4), ncols=n, tight_layout=True)
+        for (_set, title), ax in zip(title_map.items(), axes):
+            cm, r2 = self.classify_set(_set)
+            self.plot_classification(cm, ax=ax)
+            ax.set_title(f"{title}\nr2: {r2: .2f}",
+                         fontsize=15)
+        return fig
+
+    def get_title_map(self):
+        if self.val_split:
+            title_map = {
+                'train': "Training",
+                'test': "Testing",
+                'val': "Validation"
+            }
+        else:
+            title_map = {
+                'train': "Training",
+                'test': "Testing"
+            }
+        return title_map
+
+    def display_and_save_report(
+            self,
+            name,
+            save=True,
+            transparent_plots=False,
+            save_model=True,
+            show_headers=True,
+            filepath="./reports",
+            display_notebook=True):
+        headers = [
+            "Predictions",
+            "Classification",
+            "Summary importances",
+            "Bar importances"
+        ]
+        headers.reverse()
+
+        def header():
+            _name = headers.pop()
+            _str = f"""
+<h3 style="
+    color:White;
+    background-image: linear-gradient(180deg, SlateBlue, rgb(1, 1, 1));
+    text-align: center;
+    margin-top: 1em
+    position: center;
+    left: 9.5em;
+    border: 3px solid LightGray;
+    "
+>{_name}</h3>
+            """
+            display(Markdown(_str))
+
+        # Predictions
+        header()
+        self.predict_r2_scores()
+        pred_fig = self.plot_predictions()
+        plt.show()
+
+        # Classifications
+        header()
+        cm_fig = self.classify()
+        plt.show()
+
+        # Shap summary
+        header()
+        shap_summary_fig = self.plot_shap_summary()
+
+        # Shap bar
+        header()
+        shap_bar_fig = self.plot_shap_bar()
+        if save:
+            filepath = filepath + f"/{name}/"
+            img_filepath = filepath + "img/"
+            if not os.path.isdir(filepath):
+                os.mkdir(filepath)
+            if not os.path.isdir(img_filepath):
+                os.mkdir(img_filepath)
+            if transparent_plots:
+                ext = '.png'
+            else:
+                ext = '.jpg'
+            plot_names = {
+                pred_fig: "prediction_scoring",
+                cm_fig: "classification_scoring",
+                shap_summary_fig: "summary_importances",
+                shap_bar_fig: "bar_importances"
+            }
+            for fig, _name in plot_names.items():
+                fig.savefig(img_filepath + _name + ext,
+                            transparent=transparent_plots)
+
+        if save_model:
+            # TODO add pathfinding
+            self.model.save(f"./data/models/{name}.h5")
+        return 1
 
 
 # if __name__ == "__main__":
