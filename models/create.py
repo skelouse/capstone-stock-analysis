@@ -1,16 +1,14 @@
 from inspect import Parameter
 import os
 import shap
-# import sys
-# import time
-# import datetime
-# import importlib
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from functools import partial
+
+# This should check if it's in a jupyter environment
 from IPython.display import Markdown, display
 
 
@@ -38,8 +36,78 @@ class DummyHp():
 
 
 class NetworkCreator():
+    """
+    For creating a Time Series predicting neural network
+    Used for
+        - tuning model parameters
+        - testing tuned parameters
+        - cleaning the TS data
+        - delivering model reports
+
+    Parameters
+    ----------------------------------------
+    df{pd.DataFrame}::
+        A dataframe consisting of X_cols and y_cols
+    X_cols[list, str]::
+        Either uses a list to directly slice the
+        data and targets, OR uses all columns that
+        contain the supplied string.
+    y_cols[list, str]::
+        Either uses a list to directly slice the
+        data and targets, OR uses all columns that
+        contain the supplied string.
+    n_days(int)::
+        Number of days to use in each days prediction
+        EX:)  if n_days was 3
+            - slice targets[3:]
+            - use data[0:4] to predict first target
+            - data[1:5] to predict next target
+            - ...
+    test_split=0.3(float 0-1)::
+        The decimal percentage to split the
+        test data on
+    val_split=0.05(float 0-1)::
+        The decimal percentage to split the
+        val data on
+
+    Example Usage
+    ----------------------------------------
+    # Import libraries
+    >>> import matplotlib.pyplot as plt
+    >>> import seaborn as sns
+    >>> import pandas as pd
+
+    # Load dataset
+    >>> flights = sns.load_dataset('flights')
+
+    # Define n_years could also be n_days
+    >>> n_years = 1
+
+    # Map month strings to 0-12
+    >>> month_map = flights['month'][:12].reset_index(drop=True).to_dict()
+    >>> flights['month'] = flights['month'].map(month_map)
+
+    # Instantiate NetworkCreator
+    >>> creator = NetworkCreator(flights, 'month', 'passengers', n_years)
+
+    # build and fit model ( With default parameters )
+    >>> creator.build_and_fit_model(dummy_hp=True)
+
+    # Fit model
+    >>> history = creator.model.fit(
+    >>>     creator.train_data_gen,
+    >>>     validation_data=creator.val_data_gen,
+    >>>     epochs=10)
+
+    # Plot the loss and val_loss
+    >>> plt.plot(history.history['loss'])
+    >>> plt.plot(history.history['val_loss'])
+    >>> plt.legend(['train', 'test'])
+    >>> plt.show()
+    """
+    # TODO add splitting df like df_train/test/val
     def __init__(self, df, X_cols, y_cols, n_days,
-                 test_split=.3, val_split=.05):
+                 test_split=0.3, val_split=0.05):
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
@@ -48,6 +116,25 @@ class NetworkCreator():
         self.prepare_data(n_days)
 
     def prepare_data(self, n_days=1):
+        """
+        Runs in initialization
+
+        Parameters
+        ----------------------------------------
+        n_days(int)::
+            Number of time periods to use in prediction
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         self.clean_cols()
         self.split_dataframes(self.test_split, self.val_split)
         self.split_and_scale_dataframes()
@@ -57,7 +144,280 @@ class NetworkCreator():
         self.input_shape = (self.n_input,
                             self.X_n_features)
 
+    def clean_cols(self):
+        """
+        If a string is given for cols then it will take all of the columns
+        that are in the dataframe that contain that string
+        """
+        if isinstance(self.X_cols, str):
+            self.X_cols = \
+                [col for col in self.df.columns if self.X_cols in col]
+            print("Got", len(self.X_cols), "X columns")
+
+        if isinstance(self.y_cols, str):
+            self.y_cols = \
+                [col for col in self.df.columns if self.y_cols in col]
+            print("Got", len(self.y_cols), "y columns")
+
+    def _contains(self, sub, pri):
+        """
+        For checking if one list is inside of another
+        https://stackoverflow.com/questions/3847386/how-to-test-if-a-list-contains-another-list  # noqa
+        """
+        # TODO check if .isin() would do the same thing
+        M, N = len(pri), len(sub)
+        i, LAST = 0, M-N+1
+        while True:
+            try:
+                found = pri.index(sub[0], i, LAST)  # find first elem in sub
+            except ValueError:
+                return False
+            if pri[found:found+N] == sub:
+                return [found, found+N-1]
+            else:
+                i = found+1
+
+    @classmethod
+    def split_perc(cls, df, test_split=.3, val_split=.05):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
+        if val_split:
+            total_split = test_split + val_split
+            train, test_val = train_test_split(
+                df, test_size=total_split, shuffle=False)
+            real_split = val_split/test_split
+            val, test = train_test_split(
+                test_val, train_size=real_split, shuffle=False)
+            return train, val, test
+        else:
+            train, test = train_test_split(
+                df, test_size=test_split, shuffle=False)
+            return train, test
+
+    def split_dataframes(self, test_split=.3, val_split=.05):
+        """
+        Splits the dataframe into train, test, and validation
+        """
+        try:
+            if len(self.y_cols) == 1:
+                print("target is in data")
+                select_cols = self.X_cols + self.y_cols
+                self.df = self.df[select_cols]
+
+            elif self.X_cols == self.y_cols:
+                print('target(s) equal data')
+                self.df = self.df[self.X_cols]
+
+            elif ((self._contains(self.y_cols, self.X_cols)[1]
+                  - self._contains(self.y_cols, self.X_cols)[0])
+                  + 1 == len(self.y_cols)):
+                print("targets are in x")
+
+            else:
+                print('target is not in data')
+                select_cols = self.X_cols + self.y_cols
+                self.df = self.df[select_cols]
+
+        except TypeError:
+            print('y is in dataframe but not x')
+            select_cols = self.X_cols + self.y_cols
+            self.df = self.df[select_cols]
+
+        # Get column indices
+        self.column_indices = \
+            {name: i for i, name in enumerate(self.df.columns)}
+
+        # Split dataframes
+        if val_split:
+            train, val, test = self.split_perc(self.df, test_split, val_split)
+            self.df_train = train
+            self.df_test = test
+            self.df_val = val
+        else:
+            train, test = self.split_perc(self.df, test_split, val_split=0)
+            self.df_train = train
+            self.df_test = test
+
+    def split_and_scale_dataframes(self):
+        """
+        Scales and splits the data into X and y of each
+        train, test, and val.
+        """
+
+        # If there is one target
+        if len(self.y_cols) == 1:
+
+            # Define scaler
+            self.X_scaler = MinMaxScaler()
+
+            # Scale data
+            self.df_scaled = self.X_scaler.fit_transform(self.df)
+            self.df_train_scaled = self.X_scaler.transform(self.df_train)
+            self.df_test_scaled = self.X_scaler.transform(self.df_test)
+            if self.val_split:
+                self.df_val_scaled = self.X_scaler.transform(self.df_val)
+
+            # Split data
+            self.y_col_idx = self.column_indices[self.y_cols[0]]
+
+            self.X_train = self.df_train_scaled[:, :self.y_col_idx].copy()
+            self.y_train = self.df_train_scaled[:, self.y_col_idx].copy()
+            self.X_test = self.df_test_scaled[:, :self.y_col_idx].copy()
+            self.y_test = self.df_test_scaled[:, self.y_col_idx].copy()
+            if self.val_split:
+                self.X_val = self.df_val_scaled[:, :self.y_col_idx].copy()
+                self.y_val = self.df_val_scaled[:, self.y_col_idx].copy()
+
+        elif self.X_cols != self.y_cols:  # Accounting for another scaler
+            # TODO check if this is accurate, this may just be able to tie
+            #      with above
+            # Split df by X and y cols
+            self.X_df_train = self.df_train[self.X_cols]
+            self.y_df_train = self.df_train[self.y_cols]
+            self.X_df_test = self.df_test[self.X_cols]
+            self.y_df_test = self.df_test[self.y_cols]
+            if self.val_split:
+                self.X_df_val = self.df_val[self.X_cols]
+                self.y_df_val = self.df_val[self.y_cols]
+
+            # Define scalers
+            self.X_scaler = MinMaxScaler()
+            self.y_scaler = MinMaxScaler()
+
+            # Scale data
+            self.X_train = self.X_scaler.fit_transform(self.X_df_train)
+            self.y_train = self.y_scaler.fit_transform(self.y_df_train)
+            self.X_test = self.X_scaler.transform(self.X_df_test)
+            self.y_test = self.y_scaler.transform(self.y_df_test)
+            if self.val_split:
+                self.X_val = self.X_scaler.transform(self.X_df_val)
+                self.y_val = self.y_scaler.transform(self.y_df_val)
+
+        else:  # If X and y are the same i.e predicting self with self
+
+            # Define scaler, y is 0 because it is not used
+            self.X_scaler = MinMaxScaler()
+            self.y_scaler = 0
+
+            # Scale data
+            self.df_train_scaled = self.X_scaler.fit_transform(self.df_train)
+            self.df_test_scaled = self.X_scaler.transform(self.df_test)
+            if self.val_split:
+                self.df_val_scaled = self.X_scaler.transform(self.df_val)
+
+            # Split data
+            self.X_train = self.df_train_scaled.copy()
+            self.y_train = self.df_train_scaled.copy()
+            self.X_test = self.df_test_scaled.copy()
+            self.y_test = self.df_test_scaled.copy()
+            if self.val_split:
+                self.X_val = self.df_val_scaled.copy()
+                self.y_val = self.df_val_scaled.copy()
+
+    def reshape_data(self):
+        """
+        Reshapes the data based on data and target shapes
+        """
+        # Get n_features
+        self.X_n_features = self.X_train.shape[1]
+        # print(self.X_train.shape)
+        if len(self.y_cols) == 1:
+            self.y_n_features = 1
+        else:
+            self.y_n_features = self.y_train.shape[1]
+        # print(self.y_train.shape)
+
+        # Reshape data
+        self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
+                                                      self.X_n_features))
+        self.y_train_reshaped = self.y_train.reshape((len(self.y_train),
+                                                      self.y_n_features))
+
+        self.X_test_reshaped = self.X_test.reshape((len(self.X_test),
+                                                    self.X_n_features))
+        self.y_test_reshaped = self.y_test.reshape((len(self.y_test),
+                                                    self.y_n_features))
+
+        if self.val_split:
+            self.X_val_reshaped = self.X_val.reshape((len(self.X_val),
+                                                      self.X_n_features))
+            self.y_val_reshaped = self.y_val.reshape((len(self.y_val),
+                                                      self.y_n_features))
+
+    def create_TS_generators(self, n_days):
+        """
+        Creates the data generators
+
+        Parameters
+        ----------------------------------------
+        n_days{int}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
+        self.n_input = n_days
+        # Get data generators
+        self.train_data_gen = sequence.TimeseriesGenerator(
+                            self.X_train_reshaped,
+                            self.y_train_reshaped,
+                            length=self.n_input)
+        self.test_data_gen = sequence.TimeseriesGenerator(
+                            self.X_test_reshaped,
+                            self.y_test_reshaped,
+                            length=self.n_input)
+        if self.val_split:
+            self.val_data_gen = sequence.TimeseriesGenerator(
+                                self.X_val_reshaped,
+                                self.y_val_reshaped,
+                                length=self.n_input)
+
+    
     def load_parameters(self, name):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         parameters = {
             'input_neurons': [16, 32, 64],
             'input_dropout_rate': [.1, .3, .5],
@@ -124,6 +484,25 @@ class NetworkCreator():
         # Other
         dummy_hp=False
                             ):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
 
         if not hp and dummy_hp:
             hp = DummyHp()
@@ -222,243 +601,16 @@ class NetworkCreator():
             )
         return self.model
 
-    # def run_test(self):
-    #     early_stopping_kwargs = dict(monitor='val_loss', patience=25)
-    #     model_fit_kwargs = dict(epochs=2000, batch_size=64,
-    #                             verbose=2, shuffle=False)
-    #     self.build_and_fit_model(early_stopping_kwargs=early_stopping_kwargs,
-    #                              model_fit_kwargs=model_fit_kwargs)
-
-    #     self.predict_r2_scores()
-    #     self.display_r2_scores()
-
-    def clean_cols(self):
-        """
-        If a string is given for cols then it will take all of the columns
-        that are in the dataframe that contain that string
-        """
-        if isinstance(self.X_cols, str):
-            self.X_cols = \
-                [col for col in self.df.columns if self.X_cols in col]
-            print("Got", len(self.X_cols), "X columns")
-
-        if isinstance(self.y_cols, str):
-            self.y_cols = \
-                [col for col in self.df.columns if self.y_cols in col]
-            print("Got", len(self.y_cols), "y columns")
-
-    def _contains(self, sub, pri):
-        "https://stackoverflow.com/questions/3847386/how-to-test-if-a-list-contains-another-list"  # noqa
-        M, N = len(pri), len(sub)
-        i, LAST = 0, M-N+1
-        while True:
-            try:
-                found = pri.index(sub[0], i, LAST)  # find first elem in sub
-            except ValueError:
-                return False
-            if pri[found:found+N] == sub:
-                return [found, found+N-1]
-            else:
-                i = found+1
-
-    @classmethod
-    def split_perc(cls, df, test_split=.3, val_split=.05):
-        if val_split:
-            total_split = test_split + val_split
-            train, test_val = train_test_split(
-                df, test_size=total_split, shuffle=False)
-            real_split = val_split/test_split
-            val, test = train_test_split(
-                test_val, train_size=real_split, shuffle=False)
-            return train, val, test
-        else:
-            train, test = train_test_split(
-                df, test_size=test_split, shuffle=False)
-            return train, test
-
-    def split_dataframes(self, test_split=.3, val_split=.05):
-        """
-        Splits the dataframe into train, test, and validation
-        """
-        try:
-            if len(self.y_cols) == 1:
-                print("y is in x")
-                select_cols = self.X_cols + self.y_cols
-                self.df = self.df[select_cols]
-
-            elif self.X_cols == self.y_cols:
-                print('y is the same as x')
-                self.df = self.df[self.X_cols]
-
-            elif ((self._contains(self.y_cols, self.X_cols)[1]
-                - self._contains(self.y_cols, self.X_cols)[0])
-                + 1 == len(self.y_cols)):
-                print("y is in x")
-
-            else:
-                print('y is different than x')
-                select_cols = self.X_cols + self.y_cols
-                self.df = self.df[select_cols]
-
-        except TypeError:
-            print('y is in dataframe but not x')
-            select_cols = self.X_cols + self.y_cols
-            self.df = self.df[select_cols]
-
-        # Get column indices
-        self.column_indices = \
-            {name: i for i, name in enumerate(self.df.columns)}
-
-        # Split dataframes
-
-        # calculate indices with decimal,  round down
-        # Move val data into the middle rather than at the end
-        # Split dataframes
-        if val_split:
-            train, val, test = self.split_perc(self.df, test_split, val_split)
-            self.df_train = train
-            self.df_test = test
-            self.df_val = val
-        else:
-            train, test = self.split_perc(self.df, test_split, val_split=0)
-            self.df_train = train
-            self.df_test = test
-
-    def split_and_scale_dataframes(self):
-        """
-        Scales and splits the data into X and y of each
-        train, test, and val.
-        """
-
-
-        # if len(y_cols) == 1 then slice one column from scaled X data
-        # self.X_scaler = MinMaxScaler()
-        #
-        if len(self.y_cols) == 1:
-
-            # Define scaler
-            self.X_scaler = MinMaxScaler()
-
-            # Scale data
-            self.df_scaled = self.X_scaler.fit_transform(self.df)
-            self.df_train_scaled = self.X_scaler.transform(self.df_train)
-            self.df_test_scaled = self.X_scaler.transform(self.df_test)
-            if self.val_split:
-                self.df_val_scaled = self.X_scaler.transform(self.df_val)
-
-            # Split data
-            self.y_col_idx = self.column_indices[self.y_cols[0]]
-
-            self.X_train = self.df_train_scaled[:, :self.y_col_idx].copy()
-            self.y_train = self.df_train_scaled[:, self.y_col_idx].copy()
-            self.X_test = self.df_test_scaled[:, :self.y_col_idx].copy()
-            self.y_test = self.df_test_scaled[:, self.y_col_idx].copy()
-            if self.val_split:
-                self.X_val = self.df_val_scaled[:, :self.y_col_idx].copy()
-                self.y_val = self.df_val_scaled[:, self.y_col_idx].copy()
-
-        elif self.X_cols != self.y_cols:  # Accounting for another scaler
-            # Split df by X or y cols
-            self.X_df_train = self.df_train[self.X_cols]
-            self.y_df_train = self.df_train[self.y_cols]
-            self.X_df_test = self.df_test[self.X_cols]
-            self.y_df_test = self.df_test[self.y_cols]
-            if self.val_split:
-                self.X_df_val = self.df_val[self.X_cols]
-                self.y_df_val = self.df_val[self.y_cols]
-
-            # Define scalers
-            self.X_scaler = MinMaxScaler()
-            self.y_scaler = MinMaxScaler()
-
-            # Scale data
-            self.X_train = self.X_scaler.fit_transform(self.X_df_train)
-            self.y_train = self.y_scaler.fit_transform(self.y_df_train)
-            self.X_test = self.X_scaler.transform(self.X_df_test)
-            self.y_test = self.y_scaler.transform(self.y_df_test)
-            if self.val_split:
-                self.X_val = self.X_scaler.transform(self.X_df_val)
-                self.y_val = self.y_scaler.transform(self.y_df_val)
-
-        else:  # If X and y are the same i.e predicting self with self
-
-            # Define scaler, y is 0 because it is not used
-            self.X_scaler = MinMaxScaler()
-            self.y_scaler = 0
-
-            # Scale data
-            self.df_train_scaled = self.X_scaler.fit_transform(self.df_train)
-            self.df_test_scaled = self.X_scaler.transform(self.df_test)
-            if self.val_split:
-                self.df_val_scaled = self.X_scaler.transform(self.df_val)
-
-            # Split data
-            self.X_train = self.df_train_scaled.copy()
-            self.y_train = self.df_train_scaled.copy()
-            self.X_test = self.df_test_scaled.copy()
-            self.y_test = self.df_test_scaled.copy()
-            if self.val_split:
-                self.X_val = self.df_val_scaled.copy()
-                self.y_val = self.df_val_scaled.copy()
-
-    def reshape_data(self):
-        """
-        Reshapes the data based on X_train, and y_train's shapes
-        """
-        # Get n_features
-        self.X_n_features = self.X_train.shape[1]
-        # print(self.X_train.shape)
-        if len(self.y_cols) == 1:
-            self.y_n_features = 1
-        else:
-            self.y_n_features = self.y_train.shape[1]
-        # print(self.y_train.shape)
-
-        # Reshape data
-        self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
-                                                      self.X_n_features))
-        self.y_train_reshaped = self.y_train.reshape((len(self.y_train),
-                                                      self.y_n_features))
-
-        self.X_test_reshaped = self.X_test.reshape((len(self.X_test),
-                                                    self.X_n_features))
-        self.y_test_reshaped = self.y_test.reshape((len(self.y_test),
-                                                    self.y_n_features))
-
-        if self.val_split:
-            self.X_val_reshaped = self.X_val.reshape((len(self.X_val),
-                                                      self.X_n_features))
-            self.y_val_reshaped = self.y_val.reshape((len(self.y_val),
-                                                      self.y_n_features))
-
-    def create_TS_generators(self, n_days):
-        """
-        Creates the data generators
-        """
-        self.n_input = n_days
-        # Get data generators
-        self.train_data_gen = sequence.TimeseriesGenerator(
-                            self.X_train_reshaped,
-                            self.y_train_reshaped,
-                            length=self.n_input)
-        self.test_data_gen = sequence.TimeseriesGenerator(
-                            self.X_test_reshaped,
-                            self.y_test_reshaped,
-                            length=self.n_input)
-        if self.val_split:
-            self.val_data_gen = sequence.TimeseriesGenerator(
-                                self.X_val_reshaped,
-                                self.y_val_reshaped,
-                                length=self.n_input)
-
     def get_r2_scores_one_y(self, _print=False):
+        """
+        Creates the r2 scores for data if there is a single target
+
+        """
         cols = self.y_cols + ['predicted']
 
         # Training data
         train_prediction = self.model.predict(self.train_data_gen)
-
         temp_df = self.df_train_scaled.copy()[self.n_input:]
-
         y_true = temp_df[:, self.y_col_idx].copy()
 
         temp_df[:, self.y_col_idx] = \
@@ -511,6 +663,10 @@ class NetworkCreator():
                 print(f"val_r2:{self.val_r2: .2f}", )
 
     def get_r2_scores_multi_y(self):
+        """
+        Creates the r2 scores for multiple targets whether inside
+        X_cols or not
+        """
         # Training data
         train_prediction = self.model.predict(self.train_data_gen)
         train_prediction_iv = self.y_scaler.inverse_transform(train_prediction)
@@ -543,6 +699,10 @@ class NetworkCreator():
             self.val_r2 = r2_score(y_true_val, self.df_predict_val)
 
     def get_r2_scores_self_y(self):
+        """
+        Creates the r2 scores for data predicting itself
+        i.e X_cols == y_cols  OR  data ~= (targets, shift(1))
+        """
         # Training data
         train_prediction = self.model.predict(self.train_data_gen)
         train_prediction_iv = self.X_scaler.inverse_transform(train_prediction)
@@ -575,7 +735,26 @@ class NetworkCreator():
             self.val_r2 = r2_score(y_true_val, self.df_predict_val)
 
     def predict_r2_scores(self, _print=False):
-        # Predictions (r2_score)
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
+
         # If predicting one column for y
         if (len(self.y_cols) == 1):
             self.get_r2_scores_one_y(_print)
@@ -599,6 +778,25 @@ class NetworkCreator():
             self.plot_predictions()
 
     def plot_predictions(self, sets=None, marker="."):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         if self.val_split and not sets:
             sets = ['train', 'test', 'val']
         elif not sets:
@@ -670,6 +868,26 @@ class NetworkCreator():
         return fig
 
     def get_shap_values(self):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
+        # TODO add _set parameter for taking val, train, or test
         first = int(self.val_data_gen.data.shape[0]/self.n_input)
         last = self.val_data_gen.data.shape[1]
 
@@ -679,6 +897,25 @@ class NetworkCreator():
             self.val_data_gen.data.reshape((first, self.n_input, last)), 1)
 
     def plot_shap_summary(self):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         try:
             shap_val_total = self.shap_val[0].sum(axis=1)
         except AttributeError:
@@ -695,6 +932,25 @@ class NetworkCreator():
         return fig
 
     def plot_shap_bar(self):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         try:
             shap_val_x_day = np.array(self.shap_val) \
                 .sum(axis=1).sum(axis=1)[0]
@@ -712,6 +968,25 @@ class NetworkCreator():
         return fig
 
     def classify_set(self, _set):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         true = self.__dict__[f'{_set}_y_true']
         pred = self.__dict__[f'{_set}_y_pred']
         df = pd.DataFrame({
@@ -725,24 +1000,69 @@ class NetworkCreator():
         r2 = r2_score(df['true'], df['pred'])
         return confusion_matrix(df['true'], df['pred'], normalize='all'), r2
 
-    def plot_classification(self, cm, ax, classes=['Down', 'Up']):
+    def build_classification(self, cm, ax, classes=['Down', 'Up']):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=classes)
         return disp.plot(include_values=True, cmap='Blues', ax=ax)
 
     def classify(self):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         title_map = self.get_title_map()
         n = len(title_map.keys())
         fig, axes = plt.subplots(
             figsize=(15, 4), ncols=n, tight_layout=True)
         for (_set, title), ax in zip(title_map.items(), axes):
             cm, r2 = self.classify_set(_set)
-            self.plot_classification(cm, ax=ax)
+            self.build_classification(cm, ax=ax)
             ax.set_title(f"{title}\nr2: {r2: .2f}",
                          fontsize=15)
         return fig
 
     def get_title_map(self):
+        """
+        Returns a mapping of
+        train -> Training
+        test -> Testing
+        val -> Validation
+        For use in plotting titles, and reports
+        """
         if self.val_split:
             title_map = {
                 'train': "Training",
@@ -765,6 +1085,25 @@ class NetworkCreator():
             show_headers=True,
             filepath="./reports",
             display_notebook=True):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
         headers = [
             "Predictions",
             "Classification",
@@ -834,32 +1173,48 @@ class NetworkCreator():
         return 1
 
 
-# if __name__ == "__main__":
-#     USE_GPU = True
-#     IGNORE_WARN = True
-#     SEED = 42
+ # def run_test(self):
+#     early_stopping_kwargs = dict(monitor='val_loss', patience=25)
+#     model_fit_kwargs = dict(epochs=2000, batch_size=64,
+#                             verbose=2, shuffle=False)
+#     self.build_and_fit_model(early_stopping_kwargs=early_stopping_kwargs,
+#                              model_fit_kwargs=model_fit_kwargs)
 
-#     np.random.seed(SEED)
-#     tf.random.set_seed(SEED)
-#     if USE_GPU:
-#         # Enable GPU
-#         physical_devices = tf.config.list_physical_devices('GPU')
-#         tf.config.experimental.set_memory_growth(physical_devices[0],
-#                                                  enable=True)
-#         os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+#     self.predict_r2_scores()
+#     self.display_r2_scores()
 
-#         # Show GPU
-#         print("Using GPU")
-#         print(tf.config.list_physical_devices('GPU'))
-#     else:
-#         print("Using CPU")
 
-#     df = pd.read_pickle('./data/modeling/model_df.pkl')
-#     # self.X_cols = [col for col in self.df.columns if 'TSLA_price' not in col]
-#     # self.y_cols = self.X_cols
-#     X_cols = [col for col in df.columns if 'TSLA' in col]
-#     y_cols = X_cols
-#     n_days = 1
+if __name__ == "__main__":
+    # Import libraries
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import pandas as pd
 
-#     creator = NetworkCreator(df, X_cols, y_cols)
-#     creator.run_test()
+    # Load dataset
+    flights = sns.load_dataset('flights')
+
+    # Define n_years could also be n_days
+    n_years = 1
+
+    # Map month strings to 0-12
+    month_map = flights['month'][:12].reset_index(drop=True).to_dict()
+    flights['month'] = flights['month'].map(month_map)
+
+    # Instantiate NetworkCreator
+    creator = NetworkCreator(flights, 'month', 'passengers', n_years)
+
+    # build and fit model ( With default parameters )
+    creator.build_and_fit_model(dummy_hp=True)
+
+    # Fit model
+    history = creator.model.fit(
+        creator.train_data_gen,
+        validation_data=creator.val_data_gen,
+        epochs=10
+    )
+
+    # Plot the loss and val_loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.legend(['train', 'test'])
+    plt.show()
