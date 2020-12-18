@@ -20,7 +20,7 @@
 \    |  flow.png
 |
 |
-\--- models
+\--- modeling
 \    |  __init__.py
 \    |  create.py
 \    |  scratch.py
