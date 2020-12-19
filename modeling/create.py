@@ -1,10 +1,7 @@
-# TODO implement load.py's total df datagen
-
 import os
 import shap
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from functools import partial
@@ -12,28 +9,23 @@ from functools import partial
 # This should check if it's in a jupyter environment
 from IPython.display import Markdown, display
 
-
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score, ConfusionMatrixDisplay, \
                             confusion_matrix
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import Dense, Dropout, LSTM
+# Tensorflow / keras
 from tensorflow.keras.preprocessing import sequence
-from tensorflow.keras.regularizers import l2, l1
-
 import kerastuner as kt
 from keras import backend as K
 from tensorflow.python.keras.layers.noise import GaussianNoise
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dense, Dropout, LSTM
+from tensorflow.keras.regularizers import l2, l1
 
-
-class DummyHp():
-    """A dummy class for hyperband, used when using parameters
-    and not the lists for tuning"""
-    def Choice(self, x, y):
-        return y
+# Custom library for building the network
+from .build import NetworkBuilder, DummyHp
 
 
 class NetworkCreator():
@@ -109,6 +101,7 @@ class NetworkCreator():
     # TODO add splitting df like df_train/test/val
     def __init__(self, df, X_cols, y_cols, n_days,
                  test_split=0.3, val_split=0.05):
+        self.model = None
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
@@ -119,31 +112,62 @@ class NetworkCreator():
     def prepare_data(self, n_days=1):
         """
         Runs in initialization
+        calls
+          - clean_cols
+          - split_dataframe
+          - split_and_scale_dataframes
+          - reshape data
+          - create_TS_generators
+          - initializes input_shape
+                (n_input, X_n_features)
 
         Parameters
         ----------------------------------------
         n_days(int)::
             Number of time periods to use in prediction
 
-        Returns
-        ----------------------------------------
-        self
-
-        Example Usage
-        ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
         """
         self.clean_cols()
-        self.split_dataframes(self.test_split, self.val_split)
+
+        # Splits dataframe to train, test, val
+        self.split_dataframe(self.test_split, self.val_split)
+
+        # Get column indices
+        self.column_indices = \
+            {name: i for i, name in enumerate(self.df.columns)}
+
+        # Scale data X_train, etc is not scaled
+        # Scalers are created for inverse reference
         self.split_and_scale_dataframes()
+
+        # Reshape data, creates X_train->val_reshaped
         self.reshape_data()
 
-        self.create_TS_generators(n_days=n_days)
+        # Initialize n_input
+        self.n_input = n_days
+
+        # Create Time Series Generators
+        if self.val_split:
+            self.train_data_gen, self.test_data_gen, self.val_data_gen = \
+                self.create_TS_generators(n_days=n_days)
+        else:
+            self.train_data_gen, self.test_data_gen = \
+                self.create_TS_generators(n_days=n_days)
+
+        # Define input shape for model
         self.input_shape = (self.n_input,
                             self.X_n_features)
+
+    def build_and_fit_model(self, **parameters):
+        """wrapper for build and fit model"""
+        builder = NetworkBuilder(
+            self,
+            self.n_input,
+            self.input_shape,
+            output_shape=len(self.y_cols)
+            )
+        self.model = builder.build_and_fit_model(**parameters)
+        return self.model
 
     def clean_cols(self):
         """
@@ -181,23 +205,53 @@ class NetworkCreator():
     @classmethod
     def split_perc(cls, df, test_split=.3, val_split=.05):
         """
-        desc
+        Splits a dataframe into train, test, and val
+        if val_split is > 0.
 
         Parameters
         ----------------------------------------
-        name{type}::
-            desc
+        test_split = 0.3 (float 0-1)
+            - the percentage of data to split as test
+
+        val_split = .05 (float 0-1)
+            - the percentage of data to split as val
 
         Returns
         ----------------------------------------
-        self
+        train
+            - first portion of the data, % size of
+            1 - (test_split + val_split)
+
+        test
+            - last portion of the data, % size of
+            test_split
+
+        val if val split > 0
+            - middle portion of the data, % size of
+            val_split
 
         Example Usage
         ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        >>>     'apple': [1, 2, 3, 4, 5, 6],
+        >>>     'orange': [1, 2, 3, 4, 5, 6]
+        >>> })
+        >>> train, test = NetworkCreator.split_perc(
+        ...                 df, val_split=0)
+        >>> print(train)
+        >>> print(test)
+        # train
+        ...      apple  orange
+        ... 0      1       1
+        ... 1      2       2
+        ... 2      3       3
+        ... 3      4       4
+        # test
+        ...      apple  orange
+        ... 4      5       5
+        ... 5      6       6
+
         """
         if val_split:
             total_split = test_split + val_split
@@ -212,9 +266,10 @@ class NetworkCreator():
                 df, test_size=test_split, shuffle=False)
             return train, test
 
-    def split_dataframes(self, test_split=.3, val_split=.05):
+    def split_dataframe(self, test_split=.3, val_split=.05):
         """
-        Splits the dataframe into train, test, and validation
+        Splits the dataframe on defined X_cols and y_cols
+        after that splitting on test_split and val_split.
         """
         try:
             if len(self.y_cols) == 1:
@@ -241,10 +296,6 @@ class NetworkCreator():
             select_cols = self.X_cols + self.y_cols
             self.df = self.df[select_cols]
 
-        # Get column indices
-        self.column_indices = \
-            {name: i for i, name in enumerate(self.df.columns)}
-
         # Split dataframes
         if val_split:
             train, val, test = self.split_perc(self.df, test_split, val_split)
@@ -260,6 +311,8 @@ class NetworkCreator():
         """
         Scales and splits the data into X and y of each
         train, test, and val.
+
+        Creates X and/or y scalers for inverse reference
         """
 
         # If there is one target
@@ -334,7 +387,10 @@ class NetworkCreator():
 
     def reshape_data(self):
         """
-        Reshapes the data based on data and target shapes
+        Reshapes the data based on 
+          - length of X/y
+          - X/y number of features
+        reshape(length, n_features)
         """
         # Get n_features
         self.X_n_features = self.X_train.shape[1]
@@ -364,44 +420,76 @@ class NetworkCreator():
 
     def create_TS_generators(self, n_days):
         """
-        Creates the data generators
+        Creates the data generators.
+
+        TS = tensorflow.keras.preprocessing.sequence.TimeseriesGenerator
+            - Time series generator for feeding into the model
+            splits on data and targets.
+
+        Example
+        ----------------------------------------
+        data =
+              apple  orange  banana
+        date
+          1     1      2       2
+          2     4      2       3
+          3     3      3       6
+
+        data = [apple, orange, banana]
+        target = banana
+        target is banana the following day, predicted
+        with n_days before
+
+        TS[n_days = 1]:
+        Here banana on day two is predicted with all of the the data
+        from day one, then day three is predicted from all of the data
+        from day two
+            data:
+                [[1, 2, 2],
+                [4, 2, 3]]
+            target:
+                [[3],
+                [6]]
+        TS[n_days = 2]:
+        Here banana on day three is predicted with all of the data
+        from all of the columns on day 1 and 2
+            data:
+                [[1, 2, 2
+                  4, 2, 3]]
+            target:
+                [[6]]
 
         Parameters
         ----------------------------------------
         n_days{int}::
-            desc
+            Number of days to predict next with
 
         Returns
         ----------------------------------------
-        self
-
-        Example Usage
-        ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
+        train[TS]
+        test[TS]
+        val[TS] if val_split > 0
         """
-        self.n_input = n_days
         # Get data generators
-        self.train_data_gen = sequence.TimeseriesGenerator(
+        train = sequence.TimeseriesGenerator(
                             self.X_train_reshaped,
                             self.y_train_reshaped,
                             length=self.n_input)
-        self.test_data_gen = sequence.TimeseriesGenerator(
+        test = sequence.TimeseriesGenerator(
                             self.X_test_reshaped,
                             self.y_test_reshaped,
                             length=self.n_input)
         if self.val_split:
-            self.val_data_gen = sequence.TimeseriesGenerator(
-                                self.X_val_reshaped,
-                                self.y_val_reshaped,
-                                length=self.n_input)
+            val = sequence.TimeseriesGenerator(
+                            self.X_val_reshaped,
+                            self.y_val_reshaped,
+                            length=self.n_input)
+            return train, test, val
+        return train, test
 
-    
-    def load_parameters(self, name):
+    def load_parameters(self, name, directory="./tuner_directory"):
         """
-        desc
+        Loads in the tuned parameters for building the model
 
         Parameters
         ----------------------------------------
@@ -439,7 +527,7 @@ class NetworkCreator():
         tuner = kt.Hyperband(self.build_and_fit_model,
                              objective='val_loss',
                              max_epochs=1000,
-                             directory="./tuner_directory",
+                             directory=directory,
                              project_name=name)
 
         print("Getting top hyper-parameters for:", name)
@@ -453,154 +541,6 @@ class NetworkCreator():
                                 if 'tuner' in key])
         print("removed tuner_parameters\n", tuner_parameters)
         return reg_parameters
-
-    def build_and_fit_model(
-        self,
-        hp=None,
-
-        # Input Layer
-        input_neurons=64,
-        input_dropout_rate=0,
-        use_input_regularizer=0,
-        input_regularizer_penalty=0,
-
-        # Hidden layer
-        n_hidden_layers=1,
-        hidden_layer_activation='relu',
-        hidden_dropout_rate=.3,
-        hidden_neurons=64,
-        use_hidden_regularizer=0,
-        hidden_regularizer_penalty=0,
-
-        # Early Stopping
-        use_early_stopping=True,
-        monitor='val_loss',
-        patience=5,
-
-        # Model fit
-        epochs=2000,
-        batch_size=32,
-        shuffle=False,
-
-        # Other
-        dummy_hp=False
-                            ):
-        """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
-
-        Returns
-        ----------------------------------------
-        self
-
-        Example Usage
-        ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
-        """
-
-        if not hp and dummy_hp:
-            hp = DummyHp()
-        elif not hp and not dummy_hp:
-            string = "No hp implemented, did you want dummy_hp=True?"
-            raise AttributeError(string)
-
-        # Possible clear old session
-        try:
-            del self.model
-            K.clear_session()
-        except AttributeError:
-            pass
-
-        # Model creation
-        self.model = Sequential()
-
-        #   Input layer
-        #       Regularizer check
-        _reg = None
-        _use_reg = hp.Choice('use_input_regularizer',
-                             use_input_regularizer)
-        if _use_reg:
-            _penalty = hp.Choice('input_regularizer_penalty',
-                                 input_regularizer_penalty)
-            if _use_reg > 1:
-                _reg = l2(_penalty)
-            else:
-                _reg = l1(_penalty)
-
-        #       Add input layer
-        input_neurons = self.n_input*hp.Choice('input_neurons', input_neurons)
-        self.model.add(LSTM(input_neurons,
-                            input_shape=self.input_shape,
-                            kernel_regularizer=_reg))
-
-        #           Dropout layer
-        input_dropout_rate = hp.Choice('input_dropout_rate',
-                                       input_dropout_rate)
-        if input_dropout_rate != 0:
-            self.model.add(Dropout(input_dropout_rate))
-
-        self.model.add(GaussianNoise(1))
-
-        #   Hidden layers
-        #       Regularizer check
-        _reg = None
-        _use_reg = hp.Choice('use_hidden_regularizer',
-                             use_hidden_regularizer)
-        if _use_reg:
-            _penalty = hp.Choice('hidden_regularizer_penalty',
-                                 hidden_regularizer_penalty)
-            if _use_reg > 1:
-                _reg = l2(_penalty)
-            else:
-                _reg = l1(_penalty)
-
-        #       Dropout check
-        hidden_dropout_rate = hp.Choice('hidden_dropout_rate',
-                                        hidden_dropout_rate)
-        for i in range(hp.Choice('n_hidden_layers', n_hidden_layers)):
-            self.model.add(
-                Dense(hp.Choice('hidden_neurons',
-                                hidden_neurons),
-                      activation=hidden_layer_activation,
-                      kernel_regularizer=_reg))
-
-        #       Dropout layer
-            if hidden_dropout_rate != 0:
-                self.model.add(Dropout(hidden_dropout_rate))
-
-        #   Output Layer
-        self.model.add(Dense(len(self.y_cols)))
-
-        #   Compile
-        self.model.compile(optimizer='adam',
-                           loss='mse')
-
-        #   Define callbacks
-        model_callbacks = []
-        monitor = monitor
-        patience = hp.Choice('patience', patience)
-        use_early_stopping = hp.Choice('use_early_stopping',
-                                       use_early_stopping)
-        if use_early_stopping:
-            model_callbacks.append(EarlyStopping(monitor=monitor,
-                                                 patience=patience))
-
-        # Fit partial
-        self.model.fit = partial(
-            self.model.fit,
-            callbacks=model_callbacks,
-            # epochs=hp.Choice('epochs', epochs),
-            batch_size=hp.Choice('batch_size', batch_size),
-            shuffle=shuffle
-            )
-        return self.model
 
     def get_r2_scores_one_y(self, _print=False):
         """
@@ -1172,6 +1112,154 @@ class NetworkCreator():
             # TODO add pathfinding
             self.model.save(f"./data/models/{name}.h5")
         return 1
+
+    def old_build_and_fit_model(
+        self,
+        hp=None,
+
+        # Input Layer
+        input_neurons=64,
+        input_dropout_rate=0,
+        use_input_regularizer=0,
+        input_regularizer_penalty=0,
+
+        # Hidden layer
+        n_hidden_layers=1,
+        hidden_layer_activation='relu',
+        hidden_dropout_rate=.3,
+        hidden_neurons=64,
+        use_hidden_regularizer=0,
+        hidden_regularizer_penalty=0,
+
+        # Early Stopping
+        use_early_stopping=True,
+        monitor='val_loss',
+        patience=5,
+
+        # Model fit
+        epochs=2000,
+        batch_size=32,
+        shuffle=False,
+
+        # Other
+        dummy_hp=False
+                            ):
+        """
+        desc
+
+        Parameters
+        ----------------------------------------
+        name{type}::
+            desc
+
+        Returns
+        ----------------------------------------
+        self
+
+        Example Usage
+        ----------------------------------------
+        >>> 
+        >>> 
+        >>> 
+        >>> 
+        """
+
+        if not hp and dummy_hp:
+            hp = DummyHp()
+        elif not hp and not dummy_hp:
+            string = "No hp implemented, did you want dummy_hp=True?"
+            raise AttributeError(string)
+
+        # Possible clear old session
+        try:
+            del self.model
+            K.clear_session()
+        except AttributeError:
+            pass
+
+        # Model creation
+        self.model = Sequential()
+
+        #   Input layer
+        #       Regularizer check
+        _reg = None
+        _use_reg = hp.Choice('use_input_regularizer',
+                             use_input_regularizer)
+        if _use_reg:
+            _penalty = hp.Choice('input_regularizer_penalty',
+                                 input_regularizer_penalty)
+            if _use_reg > 1:
+                _reg = l2(_penalty)
+            else:
+                _reg = l1(_penalty)
+
+        #       Add input layer
+        input_neurons = self.n_input*hp.Choice('input_neurons', input_neurons)
+        self.model.add(LSTM(input_neurons,
+                            input_shape=self.input_shape,
+                            kernel_regularizer=_reg))
+
+        #           Dropout layer
+        input_dropout_rate = hp.Choice('input_dropout_rate',
+                                       input_dropout_rate)
+        if input_dropout_rate != 0:
+            self.model.add(Dropout(input_dropout_rate))
+
+        self.model.add(GaussianNoise(1))
+
+        #   Hidden layers
+        #       Regularizer check
+        _reg = None
+        _use_reg = hp.Choice('use_hidden_regularizer',
+                             use_hidden_regularizer)
+        if _use_reg:
+            _penalty = hp.Choice('hidden_regularizer_penalty',
+                                 hidden_regularizer_penalty)
+            if _use_reg > 1:
+                _reg = l2(_penalty)
+            else:
+                _reg = l1(_penalty)
+
+        #       Dropout check
+        hidden_dropout_rate = hp.Choice('hidden_dropout_rate',
+                                        hidden_dropout_rate)
+        for i in range(hp.Choice('n_hidden_layers', n_hidden_layers)):
+            self.model.add(
+                Dense(hp.Choice('hidden_neurons',
+                                hidden_neurons),
+                      activation=hidden_layer_activation,
+                      kernel_regularizer=_reg))
+
+        #       Dropout layer
+            if hidden_dropout_rate != 0:
+                self.model.add(Dropout(hidden_dropout_rate))
+
+        #   Output Layer
+        self.model.add(Dense(len(self.y_cols)))
+
+        #   Compile
+        self.model.compile(optimizer='adam',
+                           loss='mse')
+
+        #   Define callbacks
+        model_callbacks = []
+        monitor = monitor
+        patience = hp.Choice('patience', patience)
+        use_early_stopping = hp.Choice('use_early_stopping',
+                                       use_early_stopping)
+        if use_early_stopping:
+            model_callbacks.append(EarlyStopping(monitor=monitor,
+                                                 patience=patience))
+
+        # Fit partial
+        self.model.fit = partial(
+            self.model.fit,
+            callbacks=model_callbacks,
+            # epochs=hp.Choice('epochs', epochs),
+            batch_size=hp.Choice('batch_size', batch_size),
+            shuffle=shuffle
+            )
+        return self.model
 
 
  # def run_test(self):
