@@ -100,14 +100,20 @@ class NetworkCreator():
     """
     # TODO add splitting df like df_train/test/val
     def __init__(self, df, X_cols, y_cols, n_days,
-                 test_split=0.3, val_split=0.05):
+                 test_split=0.3, val_split=0.05,
+                 tuning=False, verbose=True):
         self.model = None
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
         self.test_split = test_split
         self.val_split = val_split
-        self.prepare_data(n_days)
+        self.tuning = tuning
+        self.verbose = verbose
+        if tuning:
+            self.prepare_data_gen(n_days)
+        else:
+            self.prepare_data(n_days)
 
     def prepare_data(self, n_days=1):
         """
@@ -129,7 +135,8 @@ class NetworkCreator():
         """
         self.clean_cols()
 
-        # Splits dataframe to train, test, val
+        # Splits dataframe to X_cols + y_cols only,
+        # and to train, test, val
         self.split_dataframe(self.test_split, self.val_split)
 
         # Get column indices
@@ -148,17 +155,44 @@ class NetworkCreator():
 
         # Create Time Series Generators
         if self.val_split:
-            self.train_data_gen, self.test_data_gen, self.val_data_gen = \
+            self.data_gen, self.train_data_gen, self.test_data_gen, self.val_data_gen = \
                 self.create_TS_generators(n_days=n_days)
         else:
-            self.train_data_gen, self.test_data_gen = \
+            self.data_gen, self.train_data_gen, self.test_data_gen = \
                 self.create_TS_generators(n_days=n_days)
 
         # Define input shape for model
         self.input_shape = (self.n_input,
                             self.X_n_features)
 
-    def build_and_fit_model(self, **parameters):
+    def prepare_data_gen(self, n_days):
+        self.clean_cols()
+
+        # Splits dataframe to X_cols + y_cols only
+        assert(self.split_dataframe())
+
+        # Get column indices
+        self.column_indices = \
+            {name: i for i, name in enumerate(self.df.columns)}
+
+        # Scale data X_train, etc is not scaled
+        # Scalers are created for inverse reference
+        assert(self.split_and_scale_dataframes())
+
+        # Reshape data, creates X_train->val_reshaped
+        assert(self.reshape_data())
+
+        # Initialize n_input
+        self.n_input = n_days
+
+        # Create Time Series Generator
+        self.data_gen = self.create_TS_generators(n_days=n_days)
+
+        # Define input shape for model
+        self.input_shape = (self.n_input,
+                            self.X_n_features)
+
+    def build_and_fit_model(self, hp=None, **parameters):
         """wrapper for build and fit model"""
         builder = NetworkBuilder(
             self,
@@ -166,7 +200,7 @@ class NetworkCreator():
             self.input_shape,
             output_shape=len(self.y_cols)
             )
-        self.model = builder.build_and_fit_model(**parameters)
+        self.model = builder.build_and_fit_model(hp, **parameters)
         return self.model
 
     def clean_cols(self):
@@ -177,12 +211,14 @@ class NetworkCreator():
         if isinstance(self.X_cols, str):
             self.X_cols = \
                 [col for col in self.df.columns if self.X_cols in col]
-            print("Got", len(self.X_cols), "X columns")
+            if self.verbose:
+                print("Got", len(self.X_cols), "X columns")
 
         if isinstance(self.y_cols, str):
             self.y_cols = \
                 [col for col in self.df.columns if self.y_cols in col]
-            print("Got", len(self.y_cols), "y columns")
+            if self.verbose:
+                print("Got", len(self.y_cols), "y columns")
 
     def _contains(self, sub, pri):
         """
@@ -273,29 +309,37 @@ class NetworkCreator():
         """
         try:
             if len(self.y_cols) == 1:
-                print("target is in data")
+                if self.verbose:
+                    print("target is in data")
                 select_cols = self.X_cols + self.y_cols
                 self.df = self.df[select_cols]
 
             elif self.X_cols == self.y_cols:
-                print('target(s) equal data')
+                if self.verbose:
+                    print('target(s) equal data')
                 self.df = self.df[self.X_cols]
 
             elif ((self._contains(self.y_cols, self.X_cols)[1]
                   - self._contains(self.y_cols, self.X_cols)[0])
                   + 1 == len(self.y_cols)):
-                print("targets are in x")
+                if self.verbose:
+                    print("targets are in x")
 
             else:
-                print('target is not in data')
+                if self.verbose:
+                    print('target is not in data')
                 select_cols = self.X_cols + self.y_cols
                 self.df = self.df[select_cols]
 
         except TypeError:
-            print('y is in dataframe but not x')
+            if self.verbose:
+                print('y is in dataframe but not x')
             select_cols = self.X_cols + self.y_cols
             self.df = self.df[select_cols]
 
+        # Execution saver, only need data_gen when tuning
+        if self.tuning:
+            return 1
         # Split dataframes
         if val_split:
             train, val, test = self.split_perc(self.df, test_split, val_split)
@@ -321,16 +365,27 @@ class NetworkCreator():
             # Define scaler
             self.X_scaler = MinMaxScaler()
 
+            # Define y_col_idx
+            self.y_col_idx = self.column_indices[self.y_cols[0]]
+
+
             # Scale data
             self.df_scaled = self.X_scaler.fit_transform(self.df)
+
+            # Execution saver
+            if self.tuning:
+                self.X = self.df_scaled[:, :self.y_col_idx].copy()
+                self.y = self.df_scaled[:, self.y_col_idx].copy()
+                return 1
+
             self.df_train_scaled = self.X_scaler.transform(self.df_train)
             self.df_test_scaled = self.X_scaler.transform(self.df_test)
             if self.val_split:
                 self.df_val_scaled = self.X_scaler.transform(self.df_val)
 
             # Split data
-            self.y_col_idx = self.column_indices[self.y_cols[0]]
-
+            self.X = self.df_scaled[:, :self.y_col_idx].copy()
+            self.y = self.df_scaled[:, self.y_col_idx].copy()
             self.X_train = self.df_train_scaled[:, :self.y_col_idx].copy()
             self.y_train = self.df_train_scaled[:, self.y_col_idx].copy()
             self.X_test = self.df_test_scaled[:, :self.y_col_idx].copy()
@@ -343,10 +398,15 @@ class NetworkCreator():
             # TODO check if this is accurate, this may just be able to tie
             #      with above
             # Split df by X and y cols
+            self.X_df = self.df[self.X_cols]
+            self.y_df = self.df[self.y_cols]
+
             self.X_df_train = self.df_train[self.X_cols]
             self.y_df_train = self.df_train[self.y_cols]
+
             self.X_df_test = self.df_test[self.X_cols]
             self.y_df_test = self.df_test[self.y_cols]
+
             if self.val_split:
                 self.X_df_val = self.df_val[self.X_cols]
                 self.y_df_val = self.df_val[self.y_cols]
@@ -356,10 +416,15 @@ class NetworkCreator():
             self.y_scaler = MinMaxScaler()
 
             # Scale data
+            self.X = self.X_scaler.fit_transform(self.X_df)
+            self.y = self.y_scaler.fit_transform(self.y_df)
+
             self.X_train = self.X_scaler.fit_transform(self.X_df_train)
             self.y_train = self.y_scaler.fit_transform(self.y_df_train)
+
             self.X_test = self.X_scaler.transform(self.X_df_test)
             self.y_test = self.y_scaler.transform(self.y_df_test)
+
             if self.val_split:
                 self.X_val = self.X_scaler.transform(self.X_df_val)
                 self.y_val = self.y_scaler.transform(self.y_df_val)
@@ -371,16 +436,22 @@ class NetworkCreator():
             self.y_scaler = 0
 
             # Scale data
-            self.df_train_scaled = self.X_scaler.fit_transform(self.df_train)
+            self.df_scaled = self.X_scaler.fit_transform(self.df)
+            self.df_train_scaled = self.X_scaler.transform(self.df_train)
             self.df_test_scaled = self.X_scaler.transform(self.df_test)
             if self.val_split:
                 self.df_val_scaled = self.X_scaler.transform(self.df_val)
 
             # Split data
+            self.X = self.df_scaled.copy()
+            self.y = self.df_scaled.copy()
+
             self.X_train = self.df_train_scaled.copy()
             self.y_train = self.df_train_scaled.copy()
+
             self.X_test = self.df_test_scaled.copy()
             self.y_test = self.df_test_scaled.copy()
+
             if self.val_split:
                 self.X_val = self.df_val_scaled.copy()
                 self.y_val = self.df_val_scaled.copy()
@@ -393,15 +464,24 @@ class NetworkCreator():
         reshape(length, n_features)
         """
         # Get n_features
-        self.X_n_features = self.X_train.shape[1]
-        # print(self.X_train.shape)
+        self.X_n_features = self.X.shape[1]
+        # print(self.X.shape)
         if len(self.y_cols) == 1:
             self.y_n_features = 1
         else:
-            self.y_n_features = self.y_train.shape[1]
-        # print(self.y_train.shape)
+            self.y_n_features = self.y.shape[1]
+        # print(self.y.shape)
 
         # Reshape data
+        self.X_reshaped = self.X.reshape((len(self.X),
+                                         self.X_n_features))
+        self.y_reshaped = self.y.reshape((len(self.y),
+                                         self.y_n_features))
+
+        # Execution saver
+        if self.tuning:
+            return 1
+
         self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
                                                       self.X_n_features))
         self.y_train_reshaped = self.y_train.reshape((len(self.y_train),
@@ -466,26 +546,42 @@ class NetworkCreator():
 
         Returns
         ----------------------------------------
+        data[TS]
         train[TS]
         test[TS]
         val[TS] if val_split > 0
         """
         # Get data generators
+        data = sequence.TimeseriesGenerator(
+            self.X_reshaped,
+            self.y_reshaped,
+            length=self.n_input
+            )
+        # Execution saver
+        if self.tuning:
+            return data
+
         train = sequence.TimeseriesGenerator(
-                            self.X_train_reshaped,
-                            self.y_train_reshaped,
-                            length=self.n_input)
+            self.X_train_reshaped,
+            self.y_train_reshaped,
+            length=self.n_input
+            )
+
         test = sequence.TimeseriesGenerator(
-                            self.X_test_reshaped,
-                            self.y_test_reshaped,
-                            length=self.n_input)
+            self.X_test_reshaped,
+            self.y_test_reshaped,
+            length=self.n_input
+            )
+
         if self.val_split:
             val = sequence.TimeseriesGenerator(
-                            self.X_val_reshaped,
-                            self.y_val_reshaped,
-                            length=self.n_input)
-            return train, test, val
-        return train, test
+                self.X_val_reshaped,
+                self.y_val_reshaped,
+                length=self.n_input
+                )
+            return data, train, test, val
+
+        return data, train, test
 
     def load_parameters(self, name, directory="./tuner_directory"):
         """

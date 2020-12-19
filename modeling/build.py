@@ -7,6 +7,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Dense, Dropout, LSTM
 from tensorflow.keras.regularizers import l2, l1
 
+from .sequential import CustomSequential
+
 
 class DummyHp():
     """A dummy class for hyperband, used when using parameters
@@ -56,25 +58,32 @@ class NetworkBuilder():
         dummy_hp=False
                             ):
 
+        self.hp = hp
         if not hp and dummy_hp:
-            hp = DummyHp()
+            self.hp = DummyHp()
         elif not hp and not dummy_hp:
             string = "No hp implemented, did you want dummy_hp=True?"
             raise AttributeError(string)
 
-        # Possible clear old session
-        try:
-            del self.model
-            K.clear_session()
-        except AttributeError:
-            pass
+        def clear_sess():
+            """Used for freeing ram by clearing model and keras session"""
+            try:
+                del self.model
+                K.clear_session()
+            except AttributeError:
+                pass
 
         # Model creation
-        self.model = Sequential()
+        # Check if building model from parameters or tuning
+        if isinstance(self.hp, DummyHp):
+            clear_sess()
+            self.model = Sequential()
+        else:
+            clear_sess()
+            self.model = CustomSequential(self.creator.k_folds)
 
         # Input layer
         self.input_layer(
-            hp,
             use_input_regularizer,
             input_regularizer_penalty,
             input_neurons,
@@ -83,37 +92,33 @@ class NetworkBuilder():
 
         # Hidden layers
         self.hidden_layers(
-            hp,
-            n_hidden_layers=1,
-            hidden_layer_activation='relu',
-            hidden_dropout_rate=.3,
-            hidden_neurons=64,
-            use_hidden_regularizer=0,
-            hidden_regularizer_penalty=0,
+            n_hidden_layers,
+            hidden_layer_activation,
+            hidden_dropout_rate,
+            hidden_neurons,
+            use_hidden_regularizer,
+            hidden_regularizer_penalty,
             )
+
         self.output_layer(
-            hp
             )
 
         self.make_fit(
-            hp,
             # Model fit
             #   Early Stopping
-            use_early_stopping=True,
-            monitor='val_loss',
-            patience=5,
+            use_early_stopping,
+            monitor,
+            patience,
 
             #   Fit
-            epochs=2000,
-            batch_size=32,
-            shuffle=False,
+            epochs,
+            batch_size,
+            shuffle,
         )
-
         return self.model
 
     def input_layer(
         self,
-        hp,
         use_input_regularizer,
         input_regularizer_penalty,
         input_neurons,
@@ -121,25 +126,26 @@ class NetworkBuilder():
                    ):
         #       Regularizer check
         _reg = None
-        _use_reg = hp.Choice('use_input_regularizer',
-                             use_input_regularizer)
+        _use_reg = self.hp.Choice('use_input_regularizer',
+                                  use_input_regularizer)
         if _use_reg:
-            _penalty = hp.Choice('input_regularizer_penalty',
-                                 input_regularizer_penalty)
+            _penalty = self.hp.Choice('input_regularizer_penalty',
+                                      input_regularizer_penalty)
             if _use_reg > 1:
                 _reg = l2(_penalty)
             else:
                 _reg = l1(_penalty)
 
         #       Add input layer
-        input_neurons = self.n_input*hp.Choice('input_neurons', input_neurons)
+        input_neurons = self.n_input*self.hp.Choice('input_neurons',
+                                                    input_neurons)
         self.model.add(LSTM(input_neurons,
                             input_shape=self.input_shape,
                             kernel_regularizer=_reg))
 
         #           Dropout layer
-        input_dropout_rate = hp.Choice('input_dropout_rate',
-                                       input_dropout_rate)
+        input_dropout_rate = self.hp.Choice('input_dropout_rate',
+                                            input_dropout_rate)
         if input_dropout_rate != 0:
             self.model.add(Dropout(input_dropout_rate))
 
@@ -147,35 +153,36 @@ class NetworkBuilder():
 
     def hidden_layers(
         self,
-        hp,
-        use_hidden_regularizer,
-        hidden_regularizer_penalty,
-        hidden_dropout_rate,
         n_hidden_layers,
+        hidden_layer_activation,
+        hidden_dropout_rate,
         hidden_neurons,
-        hidden_layer_activation
-
+        use_hidden_regularizer,
+        hidden_regularizer_penalty
                      ):
         #   Hidden layers
         #       Regularizer check
         _reg = None
-        _use_reg = hp.Choice('use_hidden_regularizer',
-                             use_hidden_regularizer)
+        _use_reg = self.hp.Choice('use_hidden_regularizer',
+                                  use_hidden_regularizer)
         if _use_reg:
-            _penalty = hp.Choice('hidden_regularizer_penalty',
-                                 hidden_regularizer_penalty)
+            print("\n\nhidden_regularizer_penalty\n")
+            print(hidden_regularizer_penalty)
+
+            _penalty = self.hp.Choice('hidden_regularizer_penalty',
+                                      hidden_regularizer_penalty)
             if _use_reg > 1:
                 _reg = l2(_penalty)
             else:
                 _reg = l1(_penalty)
 
         #       Dropout check
-        hidden_dropout_rate = hp.Choice('hidden_dropout_rate',
-                                        hidden_dropout_rate)
-        for i in range(hp.Choice('n_hidden_layers', n_hidden_layers)):
+        hidden_dropout_rate = self.hp.Choice('hidden_dropout_rate',
+                                             hidden_dropout_rate)
+        for i in range(self.hp.Choice('n_hidden_layers', n_hidden_layers)):
             self.model.add(
-                Dense(hp.Choice('hidden_neurons',
-                                hidden_neurons),
+                Dense(self.hp.Choice('hidden_neurons',
+                                     hidden_neurons),
                       activation=hidden_layer_activation,
                       kernel_regularizer=_reg))
 
@@ -184,8 +191,7 @@ class NetworkBuilder():
                 self.model.add(Dropout(hidden_dropout_rate))
 
     def output_layer(
-        self,
-        hp
+        self
                     ):
         #   Output Layer
         self.model.add(Dense(self.output_shape))
@@ -196,7 +202,6 @@ class NetworkBuilder():
 
     def make_fit(
         self,
-        hp,
         # Model fit
         #   Early Stopping
         use_early_stopping=True,
@@ -212,18 +217,29 @@ class NetworkBuilder():
         #   Define callbacks
         model_callbacks = []
         monitor = monitor
-        patience = hp.Choice('patience', patience)
-        use_early_stopping = hp.Choice('use_early_stopping',
-                                       use_early_stopping)
+        patience = self.hp.Choice('patience', patience)
+        use_early_stopping = self.hp.Choice('use_early_stopping',
+                                            use_early_stopping)
         if use_early_stopping:
             model_callbacks.append(EarlyStopping(monitor=monitor,
                                                  patience=patience))
 
         # Fit partial
-        self.model.fit = partial(
-            self.model.fit,
-            callbacks=model_callbacks,
-            # epochs=hp.Choice('epochs', epochs),
-            batch_size=hp.Choice('batch_size', batch_size),
-            shuffle=shuffle
-            )
+        if isinstance(self.hp, DummyHp):
+            self.model.fit = partial(
+                self.model.fit,
+                callbacks=model_callbacks,
+                # epochs=self.hp.Choice('epochs', epochs),
+                batch_size=self.hp.Choice('batch_size', batch_size),
+                shuffle=shuffle
+                )
+        else:
+            self.model.fit = partial(
+                self.model.fit,
+                callbacks=model_callbacks,
+                # epochs=self.hp.Choice('epochs', epochs),
+                batch_size=self.hp.Choice('batch_size', batch_size),
+                shuffle=shuffle,
+                n_days=1
+                # TODO remove hardwire n_days
+                )
