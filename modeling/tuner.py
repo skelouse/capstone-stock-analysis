@@ -1,4 +1,6 @@
 import copy
+
+from numpy.lib.utils import deprecate
 from .create import NetworkCreator
 from sklearn.model_selection import TimeSeriesSplit
 
@@ -73,22 +75,3 @@ class NetworkTuner(NetworkCreator):
             for k in range(1, k_folds+1):
                 self.TS_gens[k] = self.split_TS(creator.data_gen)
             self.n_day_gens[n_days] = copy.deepcopy(self.TS_gens)
-
-    def get_data_n_days(self, n_days, k):
-        """
-        Parameters
-        ----------------------------------------
-        - n_days
-            - how many days to split the data on
-
-        - r_fold
-            - which random fold to use
-
-        Returns
-        ----------------------------------------
-        - train_data_gen
-        - test_data_gen
-        - val_data_gen
-        """
-        # r_fold = random.choice(list(range(1, self.k_folds+1)))
-        return self.n_day_gens[n_days][k]
