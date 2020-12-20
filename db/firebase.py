@@ -18,6 +18,10 @@ class ConnectionError(Exception):
 
 
 class FireBase():
+    """
+    Used for connecting and pushing to firebase
+    through HTML requests
+    """
     wak = web_API_key
     url = f"https://{db_name}.firebaseio.com/"
     headers = {"Content-type": "application/json"}
@@ -27,6 +31,9 @@ class FireBase():
         self.sign_in()
 
     def put_new_data(self, data):
+        """
+        Pushes data(dict) to firebase
+        """
         json_data = json.dumps(data)
         req = requests.patch(
             self.url
@@ -43,6 +50,7 @@ class FireBase():
             return ({'success': False, 'error': req})
 
     def refresh_all_data(self, data):
+        # TODO same as put_new_data?
         json_data = json.dumps(data)
         req = requests.patch(
             self.url
@@ -59,6 +67,9 @@ class FireBase():
             return ({'success': False, 'error': req})
 
     def refresh_index(self, data):
+        """
+        Refreshes the firebase index
+        """
         json_data = json.dumps(data)
         req = requests.patch(
             self.url
@@ -75,6 +86,10 @@ class FireBase():
             return ({'success': False, 'error': req})
 
     def sign_in(self):
+        """
+        Uses Firebase API to sign in with email and password
+        for authentication for pushing to the database
+        """
         signin_data = {
             "email": email,
             "password": password,
@@ -89,6 +104,9 @@ class FireBase():
             raise ConnectionError("Invalid Email or Password")
 
     def get_index(self):
+        """
+        Gets and returns the defined index from firebase
+        """
         req = requests.get(
             self.url
             + "index/"
@@ -103,6 +121,9 @@ class FireBase():
             return ({'success': False, 'error': req})
 
     def get_sym_col(self, sym, col):
+        """
+        Returns the data for symbol and column
+        """
         req = requests.get(
             self.url
             + f"data/{sym}/{col}"
@@ -117,6 +138,7 @@ class FireBase():
             return ({'success': False, 'error': req})
 
     def capture_bug(self, traceback):
+        "Captures and sends bugs back to firebase"
         undef = False
         quantity = 1
         logs_url = (self.url + 'logs/.json?auth=' + self.id_token)

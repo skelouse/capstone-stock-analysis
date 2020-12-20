@@ -7,6 +7,9 @@ load_dotenv()
 
 
 class DataBase():
+    """Used for pulling from and converting all data to pandas dataframes"""
+    # TODO Find a better module rather than MySQLdb.  Painful to
+    # install on windows
     ip = os.getenv('IP')
     user = os.getenv('USER')
     password = os.getenv('PASSWORD')
@@ -28,25 +31,27 @@ class DataBase():
                                              columns=cols_query)
 
 
-def test():
-    import time
-    start = time.process_time()
-    names = ['performance']
-    db = DataBase('stock', 14333, 'localhost')
-    # print("Time taken = ", time.process_time() - start)
-    # print(db.frames['peformance'].columns)
-    db.pull_names_as_dataframes(names)
-    df_performance = db.frames['performance']
-    print(df_performance.loc[df_performance['TotalReturn1Yr'] == '-15.4\x10098'].iloc[0])
+if __name__ == "__main__":
+    def test():
+        # import time
+        # start = time.process_time()
+        names = ['performance']
+        db = DataBase('stock', 14333, 'localhost')
+        # print("Time taken = ", time.process_time() - start)
+        # print(db.frames['peformance'].columns)
+        db.pull_names_as_dataframes(names)
+        df_performance = db.frames['performance']
+        print(df_performance.loc[df_performance['TotalReturn1Yr']
+                                 == '-15.4\x10098'].iloc[0])
 
-def test_push():
-    db = DataBase('stocks_cleaned', 14333, 'localhost', 
-                  charset='utf8', use_unicode=True)
-    db.cur.executemany(
-      """INSERT INTO prices (name, spam, eggs, sausage, price)
-      VALUES (%s, %s, %s, %s, %s)""",
-      [
-      ("Spam and Sausage Lover's Plate", 5, 1, 8, 7.95 ),
-      ("Not So Much Spam Plate", 3, 2, 0, 3.95 ),
-      ("Don't Wany ANY SPAM! Plate", 0, 4, 3, 5.95 )
-      ] )
+    def test_push():
+        db = DataBase('stocks_cleaned', 14333, 'localhost', 
+                    charset='utf8', use_unicode=True)
+        db.cur.executemany(
+        """INSERT INTO prices (name, spam, eggs, sausage, price)
+        VALUES (%s, %s, %s, %s, %s)""",
+            [
+                ("Spam and Sausage Lover's Plate", 5, 1, 8, 7.95),
+                ("Not So Much Spam Plate", 3, 2, 0, 3.95),
+                ("Don't Wany ANY SPAM! Plate", 0, 4, 3, 5.95)
+            ])
