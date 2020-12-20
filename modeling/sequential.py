@@ -50,9 +50,11 @@ class CustomSequential(Sequential):
         histories = []
         h = None
 
-        # Runs model on each fold
+        # Iterate over number of k_folds
         for k in range(1, self.k_folds+1):
             train, test, val = self.nt.n_day_gens[self.n_days][k]
+
+            # Split data and targets
             X, y = train[0]
             X_t, y_t = test[0]
 

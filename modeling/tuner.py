@@ -141,9 +141,14 @@ class NetworkTuner(NetworkCreator):
 
     def tune(self, name, max_epochs=10, **parameters):
         """Running the tuner with kerastuner.Hyperband"""
+
+        # Feeding parameters to tune into the build function
+        # before feeding it into the Hyperband
         self.build_and_fit_model = partial(
             self.build_and_fit_model, **parameters
         )
+
+        # Register Logger dir and instantiate kt.Hyperband
         Logger.register_directory(name)
         tuner = kt.Hyperband(self.build_and_fit_model,
                              objective='val_loss',
@@ -153,10 +158,13 @@ class NetworkTuner(NetworkCreator):
                              project_name=name,
                              logger=Logger)
 
+        # Start the search for best hyper-parameters
         tuner.search(self)
 
+        # Get the best hyper-parameters
         best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
+        # Display the best hyper-parameters
         print(f"""The hyperparameter search is complete.
         The optimal number of units in the first densely-connected layer
         {best_hps.__dict__['values']}

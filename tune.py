@@ -4,6 +4,7 @@ from modeling.tuner import NetworkTuner
 
 if __name__ == "__main__":
 
+    # Define parameters to tune
     parameters = {
         'input_neurons': [2, 4, 8, 16],
         'input_dropout_rate': [.1, .3, .5],
@@ -20,6 +21,7 @@ if __name__ == "__main__":
         'n_days': [1, 2, 3]
     }
 
+    # Build the test dataframe
     _list = list(range(20))
     df = pd.DataFrame({
         'apple': copy.copy(_list),
@@ -32,9 +34,11 @@ if __name__ == "__main__":
         'watermelon': copy.copy(_list)
     })
 
+    # Define which columns are feature(s) and which are the target(s)
     X_cols = list(df.columns)
     y_cols = 'banana'
 
+    # Instantiate our NetworkTuner
     nt = NetworkTuner(
         df=df, X_cols=X_cols,
         y_cols=y_cols, k_folds=5, max_n_days=3

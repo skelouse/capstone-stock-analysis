@@ -674,7 +674,7 @@ class NetworkCreator():
                 .inverse_transform(temp_df)[:, self.y_col_idx]
 
             # Plug y_true back into dataframe, and inverse transform
-            temp_df = self.df_scaled.copy()[self.n_input:]
+            temp_df = df_scaled.copy()[self.n_input:]
             temp_df[:, self.y_col_idx] = y_true
             self.__dict__[f"{set}_y_true"] = self.X_scaler\
                 .inverse_transform(temp_df)[:, self.y_col_idx]
@@ -781,7 +781,7 @@ class NetworkCreator():
             if self.val_split:
                 print(f"Validation:{self.val_r2:.2f}")
         else:
-            self.plot_predictions()
+            return self.plot_predictions()
 
     def plot_predictions(self, sets=None, marker="."):
         """
