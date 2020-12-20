@@ -18,6 +18,7 @@ class DummyHp():
 
 
 class NetworkBuilder():
+    """"""
 
     def __init__(self, creator, n_input, input_shape, output_shape):
         self.creator = creator
@@ -29,6 +30,8 @@ class NetworkBuilder():
     def build_and_fit_model(
         self,
         hp=None,
+        # Data
+        n_days=1,
 
         # Input Layer
         input_neurons=64,
@@ -80,7 +83,9 @@ class NetworkBuilder():
             self.model = Sequential()
         else:
             clear_sess()
-            self.model = CustomSequential(self.creator.k_folds)
+            n_days = self.hp.Choice('n_days',
+                                    n_days)
+            self.model = CustomSequential(self.creator.k_folds, n_days)
 
         # Input layer
         self.input_layer(

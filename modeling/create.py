@@ -1358,17 +1358,6 @@ class NetworkCreator():
         return self.model
 
 
- # def run_test(self):
-#     early_stopping_kwargs = dict(monitor='val_loss', patience=25)
-#     model_fit_kwargs = dict(epochs=2000, batch_size=64,
-#                             verbose=2, shuffle=False)
-#     self.build_and_fit_model(early_stopping_kwargs=early_stopping_kwargs,
-#                              model_fit_kwargs=model_fit_kwargs)
-
-#     self.predict_r2_scores()
-#     self.display_r2_scores()
-
-
 if __name__ == "__main__":
     # Import libraries
     import matplotlib.pyplot as plt

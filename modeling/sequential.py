@@ -1,57 +1,70 @@
 import pandas as pd
 import numpy as np
 from tensorflow.keras.models import Sequential
-# from joblib import Parallel
 
 
 class CustomSequential(Sequential):
+    """A wrapper for Sequential to train on n_days, and
+    implement a cross-validation of the data.
+
+    Note: the cv does not change, so we can pick up training whenever,
+    and the model will not start training on different data."""
+
     model = None
     nt = None
-    # TODO fit with each cross_val
-    # Return average loss
 
-    def __init__(self, k_folds):
+    def __init__(self, k_folds, n_days):
         """
-        - Takes n k_fold
-        - Sets self.data to a list of tuples
-            [(train, val, test), (train, val, test)]
-        - fits model on train and test
-        - checks val after tuning is done for real results
+        k_folds(int > 2)
+            - number of time the data is folded for multi validation.
+        n_days(int > 1)
+            - number of days to predict `tomorrow` with.
         """
+        self.n_days = n_days
         self.k_folds = k_folds
-        # for k in range(self.k_fold):
-        #     pass
+
+        # Makes a Sequential() model
         super(CustomSequential, self).__init__()
 
     def fit(self, nt, **kwargs):
-        """Overrides model fit to call it k_folds times
+        """
+        Overrides model fit to call it k_folds times
         then averages the loss and val_loss to return back
-        as the history"""
-        print("ARGS")
-        n_days = kwargs['n_days']
+        as the history.
+        """
+        # Deleting kwargs['n_days'] so it doesn't get fed
+        # into the model.fit
         del kwargs['n_days']
         try:
             del kwargs['validation_data']
         except KeyError:
             pass
+        # Can't set nt each iteration b/c hypertuner starts
+        # feeding the data straight in, inplace of nt
         if not self.nt:
             self.nt = nt
 
         # TODO Run Parallel if possible
-        # from . import Parallel
+        # from joblib import Parallel
+        # may not work when running on GPU would need Spark
         histories = []
         h = None
+
+        # Runs model on each fold
         for k in range(1, self.k_folds+1):
-            train, test, val = self.nt.n_day_gens[n_days][k]
+            train, test, val = self.nt.n_day_gens[self.n_days][k]
             X, y = train[0]
             X_t, y_t = test[0]
+
+            # Calling Sequential.fit() with each fold
             h = super(CustomSequential, self).fit(
                 X, y,
                 validation_data=(X_t, y_t),
                 **kwargs)
             histories.append(h.history)
 
+        # Get and return average of model histories
         df = pd.DataFrame(histories)
         h.history['loss'] = np.array(df['loss'].sum()) / len(df)
         h.history['val_loss'] = np.array(df['val_loss'].sum()) / len(df)
-        return h  # average of histories
+        return h
