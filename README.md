@@ -1,5 +1,5 @@
 <h1>Table of Contents<span class="tocSkip"></span></h1>
-<div class="toc"><ul class="toc-item"><li><span><a href="#Predicting-Stock-Data-with-an-LSTM-Network" data-toc-modified-id="Predicting-Stock-Data-with-an-LSTM-Network-1"><span class="toc-item-num">1&nbsp;&nbsp;</span>Predicting Stock Data with an LSTM Network</a></span><ul class="toc-item"><li><span><a href="#Abstract" data-toc-modified-id="Abstract-1.1"><span class="toc-item-num">1.1&nbsp;&nbsp;</span>Abstract</a></span></li><li><span><a href="#This-repository-contains" data-toc-modified-id="This-repository-contains-1.2"><span class="toc-item-num">1.2&nbsp;&nbsp;</span>This repository contains</a></span></li><li><span><a href="#Using-the-OSEMN-Process" data-toc-modified-id="Using-the-OSEMN-Process-1.3"><span class="toc-item-num">1.3&nbsp;&nbsp;</span>Using the OSEMN Process</a></span></li></ul></li><li><span><a href="#Scrubbing-the-data" data-toc-modified-id="Scrubbing-the-data-2"><span class="toc-item-num">2&nbsp;&nbsp;</span>Scrubbing the data</a></span><ul class="toc-item"><li><span><a href="#Prices" data-toc-modified-id="Prices-2.1"><span class="toc-item-num">2.1&nbsp;&nbsp;</span>Prices</a></span></li><li><span><a href="#Splits" data-toc-modified-id="Splits-2.2"><span class="toc-item-num">2.2&nbsp;&nbsp;</span>Splits</a></span></li><li><span><a href="#Performance" data-toc-modified-id="Performance-2.3"><span class="toc-item-num">2.3&nbsp;&nbsp;</span>Performance</a></span></li><li><span><a href="#Company" data-toc-modified-id="Company-2.4"><span class="toc-item-num">2.4&nbsp;&nbsp;</span>Company</a></span></li><li><span><a href="#Analyst" data-toc-modified-id="Analyst-2.5"><span class="toc-item-num">2.5&nbsp;&nbsp;</span>Analyst</a></span></li><li><span><a href="#Combined-Company/Analyst/Performance" data-toc-modified-id="Combined-Company/Analyst/Performance-2.6"><span class="toc-item-num">2.6&nbsp;&nbsp;</span>Combined Company/Analyst/Performance</a></span></li></ul></li><li><span><a href="#Visualzations" data-toc-modified-id="Visualzations-3"><span class="toc-item-num">3&nbsp;&nbsp;</span>Visualzations</a></span><ul class="toc-item"><li><span><a href="#Our-SP500" data-toc-modified-id="Our-SP500-3.1"><span class="toc-item-num">3.1&nbsp;&nbsp;</span>Our SP500</a></span></li><li><span><a href="#Comparing-our-scraped-AAPL-price-to-yahoo-finance" data-toc-modified-id="Comparing-our-scraped-AAPL-price-to-yahoo-finance-3.2"><span class="toc-item-num">3.2&nbsp;&nbsp;</span>Comparing our scraped AAPL price to yahoo finance</a></span></li><li><span><a href="#AAPL-differencing-of-features-compared-to-price" data-toc-modified-id="AAPL-differencing-of-features-compared-to-price-3.3"><span class="toc-item-num">3.3&nbsp;&nbsp;</span>AAPL differencing of features compared to price</a></span></li><li><span><a href="#Positive-and-negative-correlations-to-price" data-toc-modified-id="Positive-and-negative-correlations-to-price-3.4"><span class="toc-item-num">3.4&nbsp;&nbsp;</span>Positive and negative correlations to price</a></span></li><li><span><a href="#Lack-of-overall-correlations" data-toc-modified-id="Lack-of-overall-correlations-3.5"><span class="toc-item-num">3.5&nbsp;&nbsp;</span>Lack of overall correlations</a></span></li></ul></li><li><span><a href="#First-model" data-toc-modified-id="First-model-4"><span class="toc-item-num">4&nbsp;&nbsp;</span>First model</a></span><ul class="toc-item"><li><span><a href="#Base-model-predictions" data-toc-modified-id="Base-model-predictions-4.1"><span class="toc-item-num">4.1&nbsp;&nbsp;</span>Base model predictions</a></span></li><li><span><a href="#Manually-tuned-model-predictions" data-toc-modified-id="Manually-tuned-model-predictions-4.2"><span class="toc-item-num">4.2&nbsp;&nbsp;</span>Manually tuned model predictions</a></span></li><li><span><a href="#Auto-tuned-model-predictions" data-toc-modified-id="Auto-tuned-model-predictions-4.3"><span class="toc-item-num">4.3&nbsp;&nbsp;</span>Auto-tuned model predictions</a></span></li></ul></li><li><span><a href="#Hyper-parameter-tuning-methodology" data-toc-modified-id="Hyper-parameter-tuning-methodology-5"><span class="toc-item-num">5&nbsp;&nbsp;</span>Hyper-parameter tuning methodology</a></span><ul class="toc-item"><li><span><a href="#tune.py" data-toc-modified-id="tune.py-5.1"><span class="toc-item-num">5.1&nbsp;&nbsp;</span>tune.py</a></span></li><li><span><a href="#nt.tune" data-toc-modified-id="nt.tune-5.2"><span class="toc-item-num">5.2&nbsp;&nbsp;</span>nt.tune</a></span></li><li><span><a href="#NetworkBuilder" data-toc-modified-id="NetworkBuilder-5.3"><span class="toc-item-num">5.3&nbsp;&nbsp;</span>NetworkBuilder</a></span></li><li><span><a href="#tuner.search" data-toc-modified-id="tuner.search-5.4"><span class="toc-item-num">5.4&nbsp;&nbsp;</span>tuner.search</a></span></li></ul></li><li><span><a href="#Conclusion" data-toc-modified-id="Conclusion-6"><span class="toc-item-num">6&nbsp;&nbsp;</span>Conclusion</a></span><ul class="toc-item"><li><span><a href="#Next-Steps:" data-toc-modified-id="Next-Steps:-6.1"><span class="toc-item-num">6.1&nbsp;&nbsp;</span>Next Steps:</a></span></li></ul></li><li><span><a href="#Folder-Structure" data-toc-modified-id="Folder-Structure-7"><span class="toc-item-num">7&nbsp;&nbsp;</span>Folder Structure</a></span></li><li><span><a href="#Repository-Structure" data-toc-modified-id="Repository-Structure-8"><span class="toc-item-num">8&nbsp;&nbsp;</span>Repository Structure</a></span></li></ul></div>
+<div class="toc"><ul class="toc-item"><li><span><a href="#Predicting-Stock-Data-with-an-LSTM-Network" data-toc-modified-id="Predicting-Stock-Data-with-an-LSTM-Network-1"><span class="toc-item-num">1&nbsp;&nbsp;</span>Predicting Stock Data with an LSTM Network</a></span><ul class="toc-item"><li><span><a href="#Abstract" data-toc-modified-id="Abstract-1.1"><span class="toc-item-num">1.1&nbsp;&nbsp;</span>Abstract</a></span></li><li><span><a href="#Using-the-OSEMN-Process" data-toc-modified-id="Using-the-OSEMN-Process-1.2"><span class="toc-item-num">1.2&nbsp;&nbsp;</span>Using the OSEMN Process</a></span></li><li><span><a href="#This-repository-contains" data-toc-modified-id="This-repository-contains-1.3"><span class="toc-item-num">1.3&nbsp;&nbsp;</span>This repository contains</a></span></li></ul></li><li><span><a href="#Scrubbing-the-data" data-toc-modified-id="Scrubbing-the-data-2"><span class="toc-item-num">2&nbsp;&nbsp;</span>Scrubbing the data</a></span><ul class="toc-item"><li><span><a href="#Prices" data-toc-modified-id="Prices-2.1"><span class="toc-item-num">2.1&nbsp;&nbsp;</span>Prices</a></span></li><li><span><a href="#Splits" data-toc-modified-id="Splits-2.2"><span class="toc-item-num">2.2&nbsp;&nbsp;</span>Splits</a></span></li><li><span><a href="#Performance" data-toc-modified-id="Performance-2.3"><span class="toc-item-num">2.3&nbsp;&nbsp;</span>Performance</a></span></li><li><span><a href="#Company" data-toc-modified-id="Company-2.4"><span class="toc-item-num">2.4&nbsp;&nbsp;</span>Company</a></span></li><li><span><a href="#Analyst" data-toc-modified-id="Analyst-2.5"><span class="toc-item-num">2.5&nbsp;&nbsp;</span>Analyst</a></span></li><li><span><a href="#Combined-Company/Analyst/Performance" data-toc-modified-id="Combined-Company/Analyst/Performance-2.6"><span class="toc-item-num">2.6&nbsp;&nbsp;</span>Combined Company/Analyst/Performance</a></span></li></ul></li><li><span><a href="#Visualzations" data-toc-modified-id="Visualzations-3"><span class="toc-item-num">3&nbsp;&nbsp;</span>Visualzations</a></span><ul class="toc-item"><li><span><a href="#Our-SP500" data-toc-modified-id="Our-SP500-3.1"><span class="toc-item-num">3.1&nbsp;&nbsp;</span>Our SP500</a></span></li><li><span><a href="#Comparing-our-scraped-AAPL-price-to-yahoo-finance" data-toc-modified-id="Comparing-our-scraped-AAPL-price-to-yahoo-finance-3.2"><span class="toc-item-num">3.2&nbsp;&nbsp;</span>Comparing our scraped AAPL price to yahoo finance</a></span></li><li><span><a href="#AAPL-differencing-of-features-compared-to-price" data-toc-modified-id="AAPL-differencing-of-features-compared-to-price-3.3"><span class="toc-item-num">3.3&nbsp;&nbsp;</span>AAPL differencing of features compared to price</a></span></li><li><span><a href="#Positive-and-negative-correlations-to-price" data-toc-modified-id="Positive-and-negative-correlations-to-price-3.4"><span class="toc-item-num">3.4&nbsp;&nbsp;</span>Positive and negative correlations to price</a></span></li><li><span><a href="#Lack-of-overall-correlations" data-toc-modified-id="Lack-of-overall-correlations-3.5"><span class="toc-item-num">3.5&nbsp;&nbsp;</span>Lack of overall correlations</a></span></li></ul></li><li><span><a href="#First-model" data-toc-modified-id="First-model-4"><span class="toc-item-num">4&nbsp;&nbsp;</span>First model</a></span><ul class="toc-item"><li><span><a href="#Base-model-predictions" data-toc-modified-id="Base-model-predictions-4.1"><span class="toc-item-num">4.1&nbsp;&nbsp;</span>Base model predictions</a></span></li><li><span><a href="#Manually-tuned-model-predictions" data-toc-modified-id="Manually-tuned-model-predictions-4.2"><span class="toc-item-num">4.2&nbsp;&nbsp;</span>Manually tuned model predictions</a></span></li><li><span><a href="#Auto-tuned-model-predictions" data-toc-modified-id="Auto-tuned-model-predictions-4.3"><span class="toc-item-num">4.3&nbsp;&nbsp;</span>Auto-tuned model predictions</a></span></li></ul></li><li><span><a href="#Hyper-parameter-tuning-methodology" data-toc-modified-id="Hyper-parameter-tuning-methodology-5"><span class="toc-item-num">5&nbsp;&nbsp;</span>Hyper-parameter tuning methodology</a></span><ul class="toc-item"><li><span><a href="#tune.py" data-toc-modified-id="tune.py-5.1"><span class="toc-item-num">5.1&nbsp;&nbsp;</span>tune.py</a></span></li><li><span><a href="#nt.tune" data-toc-modified-id="nt.tune-5.2"><span class="toc-item-num">5.2&nbsp;&nbsp;</span>nt.tune</a></span></li><li><span><a href="#NetworkBuilder" data-toc-modified-id="NetworkBuilder-5.3"><span class="toc-item-num">5.3&nbsp;&nbsp;</span>NetworkBuilder</a></span></li><li><span><a href="#tuner.search" data-toc-modified-id="tuner.search-5.4"><span class="toc-item-num">5.4&nbsp;&nbsp;</span>tuner.search</a></span></li></ul></li><li><span><a href="#Conclusion" data-toc-modified-id="Conclusion-6"><span class="toc-item-num">6&nbsp;&nbsp;</span>Conclusion</a></span><ul class="toc-item"><li><span><a href="#Next-Steps:" data-toc-modified-id="Next-Steps:-6.1"><span class="toc-item-num">6.1&nbsp;&nbsp;</span>Next Steps:</a></span></li></ul></li><li><span><a href="#Folder-Structure" data-toc-modified-id="Folder-Structure-7"><span class="toc-item-num">7&nbsp;&nbsp;</span>Folder Structure</a></span></li><li><span><a href="#Repository-Structure" data-toc-modified-id="Repository-Structure-8"><span class="toc-item-num">8&nbsp;&nbsp;</span>Repository Structure</a></span></li></ul></div>
 
 # Predicting Stock Data with an LSTM Network
 
@@ -9,32 +9,44 @@
 
 <body>
 <p>
-Do you want to GET RICH QUICK?  Going this route has many heartaches, and decsision trees to traverse such as.  Drop some sparse columns, or fill the missing data with 0?  Do you one hot encode an analyst saying "BUY", "HOLD", or map numerical values to each of the given features? What if there are irregularties in the price data you have, how do you fix them?  All of these and more are valid questions we had to answer, and have a direct effect on the predictions of our networks.  If in the end our predictions do gain profits we will become market movers, and eventually the market will work out the methods we are using to predict.</p>
+Do you want to GET RICH QUICK?  Going this route has many heartaches, and decsision trees to traverse such as.
+    <ul>
+        <li>Drop some sparse columns, or fill the missing data with 0?</li>  <li>Do you one hot encode an analyst saying "BUY", "HOLD", or map numerical values to each of the given features?</li> <li>What if there are irregularties in the price data you have, how do you fix them?</li></ul>  All of these and more are valid questions we had to answer, and have a direct effect on the predictions of our networks.  If in the end our predictions do gain profits we will become market movers, and eventually the market will work out the methods we are using to predict.</p>
 <p>
 Our data was scraped using Selenium from an investment firm consisting of analyst opinions performance statistics, prices, and company information for 7000+ stock symbols from August, 9th of 2019 to present.  Although after cleaning our data, and dropping irregularties we end with roughly 2000 symbols.</p>
 
 <p>We are predicting time series data, so we have to define things such as the number of days to predict the next with.  The data is then transformed into multiple matrices of X_data correlating to y_targets.  The X_data being all of the data from n day(s) before, and the y_targets being the data we are trying to predict. If one wanted to know the information two days ahead they would have to predict all of the data for one day then use the predicted data to predict the next, or structure the data in such a way where one day is being used to predict two.</p>
     
-<p>Our first networks had infinite loss due to predicting everything as 0, so we had to devise a method for creating the best network to use on the data.  There are few `plug-and-play` methods for tuning neural networks, and especially tuning Time Series predicting networks.  The method we did find was a Hyperband from `LINK-kerastuner`.  The Hyperband takes a build function and inside of the build function one can use an Hyperband choice function which reports back to the Hyperband what effect a given quotient had on the validation loss of the network.  After refactoring and development the tuner can now tune items such as:
+<p>Our first networks had infinite loss due to predicting everything as 0, so we had to devise a method for creating the best network to use on the data.  There are few `plug-and-play` methods for tuning neural networks, and especially tuning Time Series predicting networks.  The method we did find was a Hyperband from <a href="https://keras-team.github.io/keras-tuner/">kerastuner</a>.  The Hyperband takes a build function and inside of the build function one can use a Hyperband choice function which reports back to the Hyperband what effect a given quotient had on the validation loss of the network.  Our custom tuner can tune items such as:
 <ul>
     <li>n_input (number of days to use in the prediction)</li>
-    <li>columns (which of the given columns to use in the prediction)</li>
-    <li>scale or not to scale the data between 0 and 1</li>
+    <li>Columns (which of the given columns to use in the prediction)</li>
+    <li>Scale or not to scale the data between 0 and 1</li>
+    <li>How many neurons to use in any given layer</li>
+    <li>How much regularization if any to use, and which type</li>
     </ul>
 </p>
 <p>
-After developing with the Hyperband we developed a cross validation method, as kerastuner does not supply one out of the bag for time series.  Cross validation ensures that the parameters are not being tuned solely for one set of testing data.  K validation sets are also held back throughout the tuning process to test the network on at the end of tuning.</p>
-</body">
+With the Hyperband we also developed a cross validation method, as kerastuner does not supply one out of the bag for time series.  Cross validation ensures that the parameters are not being tuned solely for one set of testing data.  K validation sets are also held back throughout the tuning process to test the network at the end of tuning.</p>
+</body>
+
+## Using the OSEMN Process
+- Obtain the data
+- Scrub the data
+- Explore the data
+- Model the data
+- Interpret the data
+- <a href="https://machinelearningmastery.com/how-to-work-through-a-problem-like-a-data-scientist/">Reference</a>
 
 ## This repository contains
 
  -  A Jupyter notebook <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/main.ipynb">`main.ipynb`</a> detailing my EDA and neural network processes
  
  
- A technical <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/presentation.pdf">`presentation.pdf`</a> of the project.
+ - A technical <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/presentation.pdf">`presentation.pdf`</a> of the project.
  
  
-  A python script <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/tune.py">`tune.py`</a> which is ran with:
+ - A python script <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/tune.py">`tune.py`</a> which is ran from a shell with:
 ```
 python tune.py [name_of_network]
 # name_of_network being a predefined name correlating to a 
@@ -42,7 +54,7 @@ python tune.py [name_of_network]
 # hyper-parameters
 ```
 
- -  A Jupyter notebook <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/Pull%20and%20clean%20data.ipynb">`Pull and clean data.ipynb`</a> for pulling and replacing all of the clean data pickles, refreshing data in the 'stock_cleaned' SQL server, and refreshing the Firebase database. 
+ -  A Jupyter notebook <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/Pull%20and%20clean%20data.ipynb">`Pull and clean data.ipynb`</a> for pulling and replacing all of the pickles of data, refreshing data in the 'stock_cleaned' SQL server, and refreshing the Firebase database. 
 
 
 - Folder <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/db">`db`</a> with files <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/db/firebase.py">`firebase.py`</a> and <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/db/database.py">`database.py`</a> for connecting to and posting to Google Firebase and our SQL server.
@@ -50,16 +62,16 @@ python tune.py [name_of_network]
 
 - Folder <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/modeling">`modeling`</a> with files:
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/modeling/build.py">`build.py`</a> 
-with class NetworkBuilder which takes parameters that directly correlate to how a network is put together.  This class is also used in the tuner, for tuning those same parameters.
+with class **NetworkBuilder** which takes parameters that directly correlate to how a network is put together.  This class is also used for tuning those same parameters.
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/modeling/create.py">`create.py`</a> 
-with class NetworkCreator that does everything from preparing the time series data to creating an html report on how well the model performed on the train, test, and validation data.
+with class **NetworkCreator** that does everything from preparing the time series data to creating an html report on how well the model performed on the train, test, and validation data.
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/modeling/sequential.py">`sequential.py`</a> 
-with class CustomSequential for wrapping a keras Sequential model and overriding it's fit function to implement a custom cross validation method.
+with class **CustomSequential** for wrapping a keras Sequential model and overriding its fit function to implement a custom cross validation method.
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/modeling/tuner.py">`tuner.py`</a> 
-with class NetworkTuner for tuning a neural network's architecture, and data processing methods.
+with class **NetworkTuner** for tuning a neural network's architecture, and data processing methods.
 
 
 - Folder <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old">`old`</a> (unorganized) with files:
@@ -71,7 +83,7 @@ Which is a Jupyter Notebook where I failed to predict on all of the data
 Which is my original Jupyter Notebook containing the scrubbing process, and attempts at modeling
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old/Old%20main2.ipynb">`Old main2.ipynb`</a> 
-Which is a Jupyter Notebook showing my attempt at predicting all of the data from three sides before realizing it was basically impossible, and that company info is irrelevant there since it is unchanging.
+Which is a Jupyter Notebook showing my attempt at predicting all of the data from three sides before realizing it was impossible with my single GPU, and that company info is irrelevant there since it is unchanging.
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old/Pull%20and%20update%20data.ipynb">`Pull and update data.ipynb`</a> 
 Which is an almost working notebook for updating the data rather than pulling it all and updating everything.
@@ -96,16 +108,8 @@ Which is a Jupyter Notebook testing predictions with my old method of greek god 
 Which is a Jupyter Notebook with my first tests of plotly graphs and my scraped data for my <a href="https://sql-viewer.herokuapp.com/">Website</a>
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/test_notebooks/model_scratch_testing.ipynb">`model_scratch_testing.ipynb`</a> 
-Which is a Jupyter Notebook containing the actual function tests that were used in the beginning development of my NetworkCreator class.
+Which is a Jupyter Notebook containing the actual function tests that were used in the beginning development of my **NetworkCreator** class.
 
-
-## Using the OSEMN Process
-- Obtain the data
-- Scrub the data
-- Explore the data
-- Model the data
-- Interpret the data
-- <a href="https://machinelearningmastery.com/how-to-work-through-a-problem-like-a-data-scientist/">Reference</a>
 
 # Scrubbing the data
   <h2>Prices</h2>
@@ -172,7 +176,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 ©2020 Verizon Media.
 
 ## AAPL differencing of features compared to price
-> Here we differenced each feature so that the 2nd day is now (1st day) subtracted from (2nd day) and so on.  We than plot that on the same scale as price to see if there are any indicators of price jumps, and to check the vitality of our data.
+> Here we differenced each feature so that the 2nd day is now (1st day) subtracted from (2nd day) and so on.  We then plot that on the same scale as price to see if there are any indicators of price jumps, and to check the vitality of our data.
 
 ![aapl_differenced](./img/aapl_differ.jpg)
 
@@ -186,7 +190,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 </div>
 
 ## Positive and negative correlations to price
-> Pay special attention to the columns in red and green as they are showing negative and positive correlation to price.
+> Pay special attention to the columns in red and green as they are showing negative and positive correlation to price the next day.
 
 ![positive_negative_price](./bin/price_correlation_difference_one_day.jpg)
 
@@ -220,7 +224,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 </div>
 
 ## Manually tuned model predictions
-> After some slight manual tuning of the network here are the predictions
+> After some slight manual tuning of the network here are the predictions.
 
 ![tune_pred](./bin/tuned_pred.jpg)
 
@@ -239,7 +243,9 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 > Here we will do a simple walk through of the Hyper-parameter tuning process.
 
 ## tune.py
-> Here is a small test for the tune.py you can see that there are many different parameters defined.  `input_neurons` corresponds to how many neurons will be used in the input layer.  `n_days` corresponds to how many days are used for predicting the next, or the length of the TimeSeriesGenerator.
+> Here is a small test for the tune.py you can see that there are many different parameters defined such as: 
+> - `input_neurons` corresponds to how many neurons will be used in the input layer.
+> - `n_days` corresponds to how many days are used for predicting the next, or the length of the TimeSeriesGenerator.
 ```python
 import copy
 import pandas as pd
@@ -301,7 +307,7 @@ if __name__ == "__main__":
 ```
 
 ## nt.tune
-> When nt.tune is ran the following function is called from modeling.NetworkTuner
+> When nt.tune is ran the following function is called from **modeling.NetworkTuner**
 
 ```python
 def tune(self, name, max_epochs=10, **parameters):
@@ -338,7 +344,7 @@ def tune(self, name, max_epochs=10, **parameters):
 ```
 
 ## NetworkBuilder
-> The NetworkBuilder has a series of functions like the below for actually searching the different parameters, getting each selection from the Hyperband.  Here is a small cut-out of our input layer showcasing where the Hyperband makes choices.
+> The **NetworkBuilder** has a series of functions like the below for actually searching the different parameters, getting each selection from the Hyperband.  Here is a small cut-out of our input layer showcasing where the Hyperband makes choices.
 
 ```python
 input_neurons = hp.Choice('input_neurons', input_neurons)
@@ -348,7 +354,7 @@ model.add(LSTM(input_neurons))
 
 
 ## tuner.search
-> As the tuner begins its' search we move to our CustomSequential that is used by the NetworkTuner as the its' primary network when tuning.  The CustomSequential overrides tensorflow.keras.models.Sequantial fit function to implement a cross-validation split.  A simplified version of our CustomSequential.fit is defined as follows:
+> As the tuner begins its search we move to our **CustomSequential** that is used by the **NetworkTuner** as the its primary network when tuning.  The **CustomSequential** overrides tensorflow.keras.models.Sequantial fit function to implement a cross-validation split.  A simplified version of our **CustomSequential.fit** is defined as follows:
 
 ```python
 def fit(self, nt, **kwargs):
@@ -390,9 +396,10 @@ def fit(self, nt, **kwargs):
 * Coming soon...
 
 ## Next Steps:
-> * Cluster on absolute correlation?  take.corr for different symbols
-> * Tune network on which columns are being used for predictions
-> * Tune network with vs without differencing and/or scaling
+> * Cluster on absolute correlation takeing correlation for different symbols.
+> * Tune network on which columns are being used for predictions.
+> * Tune network with vs without differencing and/or scaling.
+> * Forecast tomorrow's prices
 
 # Folder Structure
 ```
