@@ -7,9 +7,3 @@
  - add predictions to website
  - add yahoo data
 
-
-
-ISSUES:
-in pull and clean data
-   Analyst is front filled, filling some symbols from another
-   - fixed in pull and update data
