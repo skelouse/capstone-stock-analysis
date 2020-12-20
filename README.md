@@ -282,7 +282,9 @@ if __name__ == "__main__":
     y_cols = 'banana'
 
 
-"On the instantiation of NetworkTuner our data is split into k many folds, and then each fold is split again into training, testing, and validation data."
+# On the instantiation of NetworkTuner our data is split
+# into k many folds, and then each fold is split again into
+# training, testing, and validation data.
 
     # Instantiate our NetworkTuner
     nt = NetworkTuner(
