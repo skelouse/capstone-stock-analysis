@@ -653,9 +653,7 @@ class NetworkCreator():
     def get_r2_scores_one_y(self, _print=False):
         """
         Creates the r2 scores for data if there is a single target
-
         """
-        # all data
         def get_prediction_set(set):
             df_scaled = self.__dict__[f"df_{set}_scaled"]
             data_gen = self.__dict__[f"{set}_data_gen"]
@@ -696,78 +694,51 @@ class NetworkCreator():
         for _set in _sets:
             get_prediction_set(_set)
 
-
-    def get_r2_scores_multi_y(self):
+    def get_r2_scores_multi_y(self, same=False):
         """
         Creates the r2 scores for multiple targets whether inside
         X_cols or not
+
+        Parameters
+        ----------------------------------------
+        same(bool)::
+          - whether or not X_cols and y_cols are the same
         """
-        # Training data
-        train_prediction = self.model.predict(self.train_data_gen)
-        train_prediction_iv = self.y_scaler.inverse_transform(train_prediction)
-        train_prediction_idx = self.y_df_train[self.n_input:].index
-        self.df_predict_train = pd.DataFrame(train_prediction_iv,
-                                             columns=self.y_cols,
-                                             index=train_prediction_idx)
-        y_true_train = self.y_df_train.loc[self.df_predict_train.index]
-        self.train_r2 = r2_score(y_true_train, self.df_predict_train)
+        def get_prediction_set(set):
+            data_gen = self.__dict__[f"{set}_data_gen"]
+            if same:
+                df = self.__dict__[f"df_{set}"]
+            else:
+                df = self.__dict__[f"y_df_{set}"]
 
-        # Testing data
-        test_prediction = self.model.predict(self.test_data_gen)
-        test_prediction_iv = self.y_scaler.inverse_transform(test_prediction)
-        test_prediction_idx = self.y_df_test[self.n_input:].index
-        self.df_predict_test = pd.DataFrame(test_prediction_iv,
-                                            columns=self.y_cols,
-                                            index=test_prediction_idx)
-        y_true_test = self.y_df_test.loc[self.df_predict_test.index]
-        self.test_r2 = r2_score(y_true_test, self.df_predict_test)
+            # Getting data_gen prediction
+            prediction = self.model.predict(data_gen)
 
-        # Validation data
+            # Inverse scaling prediction
+            prediction_iv = self.y_scaler.inverse_transform(prediction)
+
+            # Getting the y index, slicing out the non predicted values
+            prediction_idx = df[self.n_input:].index
+            self.__dict__[f"df_predict_{set}"] = \
+                pd.DataFrame(prediction_iv,
+                             columns=self.y_cols,
+                             index=prediction_idx)
+
+            # Getting y_true by locing from df the index of df_predict
+            y_true = df.loc[self.__dict__[f"df_predict_{set}"].index]
+
+            # Calculating r2_score with sklearn.metrics.r2_score
+            r2 = r2_score(y_true, self.__dict__[f"df_predict_{set}"])
+
+            # Setting set_r2
+            self.__dict__[f"{set}_r2"] = r2
+
+        _sets = ['train', 'test']
         if self.val_split:
-            val_prediction = self.model.predict(self.val_data_gen)
-            val_prediction_iv = self.y_scaler.inverse_transform(val_prediction)
-            val_prediction_idx = self.y_df_val[self.n_input:].index
-            self.df_predict_val = pd.DataFrame(val_prediction_iv,
-                                               columns=self.y_cols,
-                                               index=val_prediction_idx)
-            y_true_val = self.y_df_val.loc[self.df_predict_val.index]
-            self.val_r2 = r2_score(y_true_val, self.df_predict_val)
+            _sets.append('val')
 
-    def get_r2_scores_self_y(self):
-        """
-        Creates the r2 scores for data predicting itself
-        i.e X_cols == y_cols  OR  data ~= (targets, shift(1))
-        """
-        # Training data
-        train_prediction = self.model.predict(self.train_data_gen)
-        train_prediction_iv = self.X_scaler.inverse_transform(train_prediction)
-        train_prediction_idx = self.df_train[self.n_input:].index
-        self.df_predict_train = pd.DataFrame(train_prediction_iv,
-                                             columns=self.y_cols,
-                                             index=train_prediction_idx)
-        y_true_train = self.df_train.loc[self.df_predict_train.index]
-        self.train_r2 = r2_score(y_true_train, self.df_predict_train)
-
-        # Testing data
-        test_prediction = self.model.predict(self.test_data_gen)
-        test_prediction_iv = self.X_scaler.inverse_transform(test_prediction)
-        test_prediction_idx = self.df_test[self.n_input:].index
-        self.df_predict_test = pd.DataFrame(test_prediction_iv,
-                                            columns=self.y_cols,
-                                            index=test_prediction_idx)
-        y_true_test = self.df_test.loc[self.df_predict_test.index]
-        self.test_r2 = r2_score(y_true_test, self.df_predict_test)
-
-        # Validation data
-        if self.val_split:
-            val_prediction = self.model.predict(self.val_data_gen)
-            val_prediction_iv = self.X_scaler.inverse_transform(val_prediction)
-            val_prediction_idx = self.df_val[self.n_input:].index
-            self.df_predict_val = pd.DataFrame(val_prediction_iv,
-                                               columns=self.y_cols,
-                                               index=val_prediction_idx)
-            y_true_val = self.df_val.loc[self.df_predict_val.index]
-            self.val_r2 = r2_score(y_true_val, self.df_predict_val)
+        for _set in _sets:
+            get_prediction_set(_set)
 
     def predict_r2_scores(self, _print=False):
         """
@@ -800,7 +771,7 @@ class NetworkCreator():
 
         # if predicting self with self
         else:
-            self.get_r2_scores_self_y()
+            self.get_r2_scores_multi_y(same=True)
 
     def display_r2_scores(self, plot=False):
         if not plot:
@@ -814,16 +785,21 @@ class NetworkCreator():
 
     def plot_predictions(self, sets=None, marker="."):
         """
-        desc
+        Currently only works with one y
 
         Parameters
         ----------------------------------------
-        name{type}::
-            desc
+        sets[list]:: Optional
+            which sets to plot
+            ['train', 'test']
+            OR
+            ['train', 'test', 'val']
+        marker(str) = "."::
+            - what marker to use on the plots
 
         Returns
         ----------------------------------------
-        self
+        fig
 
         Example Usage
         ----------------------------------------
@@ -832,6 +808,8 @@ class NetworkCreator():
         >>> 
         >>> 
         """
+        # TODO fill in example usage
+        # TODO find a way to plot with multi_y columns
         if self.val_split and not sets:
             sets = ['train', 'test', 'val']
         elif not sets:
@@ -904,23 +882,7 @@ class NetworkCreator():
 
     def get_shap_values(self):
         """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
-
-        Returns
-        ----------------------------------------
-        self
-
-        Example Usage
-        ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
+        Creates the shap values with val_data_gen
         """
         # TODO add _set parameter for taking val, train, or test
         first = int(self.val_data_gen.data.shape[0]/self.n_input)
@@ -933,16 +895,11 @@ class NetworkCreator():
 
     def plot_shap_summary(self):
         """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
+        Plots the total weight of all columns on the prediciton
 
         Returns
         ----------------------------------------
-        self
+        fig
 
         Example Usage
         ----------------------------------------
@@ -951,6 +908,7 @@ class NetworkCreator():
         >>> 
         >>> 
         """
+        # TODO add example usage
         try:
             shap_val_total = self.shap_val[0].sum(axis=1)
         except AttributeError:
@@ -968,16 +926,11 @@ class NetworkCreator():
 
     def plot_shap_bar(self):
         """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
+        Plots the negative/postive weights of columns on the data
 
         Returns
         ----------------------------------------
-        self
+        fig
 
         Example Usage
         ----------------------------------------
@@ -986,6 +939,7 @@ class NetworkCreator():
         >>> 
         >>> 
         """
+        # TODO add example usage
         try:
             shap_val_x_day = np.array(self.shap_val) \
                 .sum(axis=1).sum(axis=1)[0]
@@ -1004,23 +958,8 @@ class NetworkCreator():
 
     def classify_set(self, _set):
         """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
-
-        Returns
-        ----------------------------------------
-        self
-
-        Example Usage
-        ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
+        Used in classify to build a confusion matrix with
+        y_true and y_pred after normalizing the values to 1/0, up/down
         """
         true = self.__dict__[f'{_set}_y_true']
         pred = self.__dict__[f'{_set}_y_pred']
@@ -1037,23 +976,7 @@ class NetworkCreator():
 
     def build_classification(self, cm, ax, classes=['Down', 'Up']):
         """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
-
-        Returns
-        ----------------------------------------
-        self
-
-        Example Usage
-        ----------------------------------------
-        >>> 
-        >>> 
-        >>> 
-        >>> 
+        Used in classify to build the classification plot
         """
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=classes)
@@ -1061,16 +984,11 @@ class NetworkCreator():
 
     def classify(self):
         """
-        desc
-
-        Parameters
-        ----------------------------------------
-        name{type}::
-            desc
+        Builds a classification table for train, test, and val
 
         Returns
         ----------------------------------------
-        self
+        fig
 
         Example Usage
         ----------------------------------------
@@ -1079,6 +997,7 @@ class NetworkCreator():
         >>> 
         >>> 
         """
+        # TODO add example usage
         title_map = self.get_title_map()
         n = len(title_map.keys())
         fig, axes = plt.subplots(
@@ -1121,16 +1040,25 @@ class NetworkCreator():
             filepath="./reports",
             display_notebook=True):
         """
-        desc
+        Makes an HTML report of all of the different classification
+        and prediction plots
 
         Parameters
         ----------------------------------------
-        name{type}::
-            desc
-
-        Returns
-        ----------------------------------------
-        self
+        name(str)::
+            - The name of the report
+        save=True(bool)::
+            - Whether to save the HTML report or not
+        transparent_plots=False(bool)::
+            - Whether to save as jpg or png with transparent BG
+        save_model=True(bool)::
+            - Whether to save the model itself or not
+        show_headers=True(bool)::
+            - Whether to display the html headers on the plots or not
+        filepath="./reports"(str)::
+            - The filepath of where the report is saved
+        display_notebook=True(bool)::
+            - Whether or not to use notebook display or python
 
         Example Usage
         ----------------------------------------
@@ -1139,6 +1067,8 @@ class NetworkCreator():
         >>> 
         >>> 
         """
+        # TODO add history
+        # TODO implement display_notebook=False
         headers = [
             "Predictions",
             "Classification",
@@ -1148,6 +1078,7 @@ class NetworkCreator():
         headers.reverse()
 
         def header():
+            "Used for making the html headers"
             _name = headers.pop()
             _str = f"""
 <h3 style="
@@ -1184,20 +1115,28 @@ class NetworkCreator():
         if save:
             filepath = filepath + f"/{name}/"
             img_filepath = filepath + "img/"
+
+            # Check if directories exist
             if not os.path.isdir(filepath):
                 os.mkdir(filepath)
             if not os.path.isdir(img_filepath):
                 os.mkdir(img_filepath)
+
+            # Define plot extension
             if transparent_plots:
                 ext = '.png'
             else:
                 ext = '.jpg'
+
+            # Create plot_names for naming the given plots while saving
             plot_names = {
                 pred_fig: "prediction_scoring",
                 cm_fig: "classification_scoring",
                 shap_summary_fig: "summary_importances",
                 shap_bar_fig: "bar_importances"
             }
+
+            # Save figures
             for fig, _name in plot_names.items():
                 fig.savefig(img_filepath + _name + ext,
                             transparent=transparent_plots)
