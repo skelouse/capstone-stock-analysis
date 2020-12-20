@@ -11,13 +11,13 @@
 <p>
 Do you want to GET RICH QUICK?  Going this route has many heartaches, and decsision trees to traverse such as.
     <ul>
-        <li>Drop some sparse columns, or fill the missing data with 0?</li>  <li>Do you one hot encode an analyst saying "BUY", "HOLD", or map numerical values to each of the given features?</li> <li>What if there are irregularties in the price data you have, how do you fix them?</li></ul>  All of these and more are valid questions we had to answer, and have a direct effect on the predictions of our networks.  If in the end our predictions do gain profits we will become market movers, and eventually the market will work out the methods we are using to predict.</p>
+        <li>Drop some sparse columns, or fill the missing data with 0?</li>  <li>Do you <a href="https://hackernoon.com/what-is-one-hot-encoding-why-and-when-do-you-have-to-use-it-e3c6186d008f">one hot encode</a> an analyst saying "BUY", "HOLD", or map numerical values to each of the given features?</li> <li>What if there are irregularties in the price data you have, how do you fix them?</li></ul>  All of these and more are valid questions we had to answer, and have a direct effect on the predictions of our networks.  If in the end our predictions do gain profits we will become <a href="https://cryptohustle.com/market-makers-vs-market-movers/#:~:text=Market%20movers%20are%20traders%20or,that%20can%20influence%20price%20action.">market movers</a>, and eventually the market will work out the methods we are using to predict.</p>
 <p>
-Our data was scraped using Selenium from an investment firm consisting of analyst opinions performance statistics, prices, and company information for 7000+ stock symbols from August, 9th of 2019 to present.  Although after cleaning our data, and dropping irregularties we end with roughly 2000 symbols.</p>
+Our data was scraped using Selenium from an investment firm consisting of analyst opinions, performance statistics, prices, and company information for 7000+ stock symbols from August, 9th of 2019 to present.   Although after cleaning our data, and dropping irregularties we end with roughly 2000 symbols.</p>
 
-<p>We are predicting time series data, so we have to define things such as the number of days to predict the next with.  The data is then transformed into multiple matrices of X_data correlating to y_targets.  The X_data being all of the data from n day(s) before, and the y_targets being the data we are trying to predict. If one wanted to know the information two days ahead they would have to predict all of the data for one day then use the predicted data to predict the next, or structure the data in such a way where one day is being used to predict two.</p>
+<p>We are predicting <a href="https://towardsdatascience.com/how-to-predict-a-time-series-part-1-6d7eb182b540">time series data</a>, so we have to define things such as the number of days to predict the next with.  The data is then transformed into multiple matrices of X_data correlating to y_targets.  The X_data being all of the data from n day(s) before, and the y_targets being the data we are trying to predict. If one wanted to know the information two days ahead they would have to predict all of the data for one day then use the predicted data to predict the next, or structure the data in such a way where one day is being used to predict two.</p>
     
-<p>Our first networks had infinite loss due to predicting everything as 0, so we had to devise a method for creating the best network to use on the data.  There are few `plug-and-play` methods for tuning neural networks, and especially tuning Time Series predicting networks.  The method we did find was a Hyperband from <a href="https://keras-team.github.io/keras-tuner/">kerastuner</a>.  The Hyperband takes a build function and inside of the build function one can use a Hyperband choice function which reports back to the Hyperband what effect a given quotient had on the validation loss of the network.  Our custom tuner can tune items such as:
+<p>Our first networks had infinite loss due to predicting everything as 0, so we had to devise a method for creating the best network to use on the data.  There are few `plug-and-play` methods for tuning neural networks, and especially tuning Time Series predicting networks.  The method we did find was a Hyperband from <a href="https://keras-team.github.io/keras-tuner/">kerastuner</a>.  The Hyperband takes a build function and inside of the build function one can use a Hyperband choice function which reports back to the Hyperband what effect a given quotient had on the validation loss of the network.  Our **NetworkTuner** can tune items such as:
 <ul>
     <li>n_input (number of days to use in the prediction)</li>
     <li>Columns (which of the given columns to use in the prediction)</li>
@@ -27,7 +27,7 @@ Our data was scraped using Selenium from an investment firm consisting of analys
     </ul>
 </p>
 <p>
-With the Hyperband we also developed a cross validation method, as kerastuner does not supply one out of the bag for time series.  Cross validation ensures that the parameters are not being tuned solely for one set of testing data.  K validation sets are also held back throughout the tuning process to test the network at the end of tuning.</p>
+    With the Hyperband we also developed a <a href="https://scikit-learn.org/stable/modules/cross_validation.html">cross validation</a> method, as kerastuner does not supply one out of the bag for time series.  Cross validation ensures that the parameters are not being tuned solely for one set of testing data.  K validation sets are also held back throughout the tuning process to test the network at the end of tuning.</p>
 </body>
 
 ## Using the OSEMN Process
@@ -218,7 +218,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 <div class="alert alert-warning">
   <strong>About the plot!</strong>
     <ul>
-        <li>The network is not doing to well at predicting the test or validation data</li>
+        <li>The network is not doing too well at predicting the test or validation data</li>
         <li>Drop in quality of the testing data is showing through, as AAPL had a split in September of 2020</li>
     </ul>
 </div>
@@ -344,7 +344,7 @@ def tune(self, name, max_epochs=10, **parameters):
 ```
 
 ## NetworkBuilder
-> The **NetworkBuilder** has a series of functions like the below for actually searching the different parameters, getting each selection from the Hyperband.  Here is a small cut-out of our input layer showcasing where the Hyperband makes choices.
+> The **NetworkBuilder** has a series of functions such as the below for searching the different parameters, getting each selection from the Hyperband.  Here is a small cut-out of our input layer showcasing where the Hyperband makes choices.
 
 ```python
 input_neurons = hp.Choice('input_neurons', input_neurons)
@@ -354,7 +354,7 @@ model.add(LSTM(input_neurons))
 
 
 ## tuner.search
-> As the tuner begins its search we move to our **CustomSequential** that is used by the **NetworkTuner** as the its primary network when tuning.  The **CustomSequential** overrides tensorflow.keras.models.Sequantial fit function to implement a cross-validation split.  A simplified version of our **CustomSequential.fit** is defined as follows:
+> As the tuner begins its search we move to our **CustomSequential** that is used by the **NetworkTuner** as its primary network when tuning.  The **CustomSequential** overrides tensorflow.keras.models.Sequantial fit function to implement a cross-validation split.  A simplified version of our **CustomSequential.fit** is defined as follows:
 
 ```python
 def fit(self, nt, **kwargs):
@@ -389,7 +389,7 @@ def fit(self, nt, **kwargs):
 ```
 
 # Conclusion
-* Data can be manipulated in many different ways, and networks can be tuned in many different ways.  To accurately predict the stock market one would have to come across a lucky set of hyper-parameters, and training set that the big players have not tried on their huge servers.  The parameters chosen would also not work forever.
+* Data can be manipulated in many different ways, and networks can be tuned in many different ways.  To accurately predict the stock market one would have to come across a lucky set of hyper-parameters and training set that the big players have not tried on their huge servers.  The parameters chosen would also not work forever.
 
 * Over time if you are trading in large volumes the market would become "used" to your predictions, and the market movers would start basing their predictions off of yours, and they would become useless.
 
