@@ -391,7 +391,7 @@ def fit(self, nt, **kwargs):
 > * Tune network with vs without differencing and/or scaling
 
 # Folder Structure
-```python
+```
 \--- bin
 |
 \--- db
@@ -418,7 +418,7 @@ def fit(self, nt, **kwargs):
 
 # Repository Structure
 
-```python
+```
 \--- bin
 \    |  __init__.py
 \    |  anomoly.py
