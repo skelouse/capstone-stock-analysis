@@ -18,8 +18,30 @@ class DummyHp():
 
 
 class NetworkBuilder():
-    """"""
+    """
+    Used by NetworkTuner and NetworkCreator
+    for building and tuning the model
 
+    Parameters
+    ----------------------------------------
+    creator[modeling.NetworkCreator]::
+        -
+    n_input(int)::
+        - The number of timesteps to predict `tomorrow` with
+    input_shape(tuple,)::
+        - the input shape of the model
+    output_shape(tuple,)::
+        - the output shape of the model
+    """
+    # TODO add more parameters
+    # TODO make a list out of parameters that are not
+    # being tuned if dummy_hp=False
+    # i.e
+    # hidden_neurons = 3
+    # -> hidden_neurons = [3]
+    # may be able to remove dummy_hp quotient, and simply change everything
+    # that is not a list to a list.  Then if len of all are one use dummy
+    # else if they are not all one use the provided hp.
     def __init__(self, creator, n_input, input_shape, output_shape):
         self.creator = creator
         self.model = creator.model
@@ -60,6 +82,56 @@ class NetworkBuilder():
         # Other
         dummy_hp=False
                             ):
+        """
+        Parameters
+        ----------------------------------------
+        hp=None,
+        dummy_hp=False(bool)::
+            - whether to use a dummy_hp or not for simply building the
+            model or tuning it.  Will return an error if the model is not
+            tuning and dummy_hp is False
+
+        Data Params
+            ------------------------------------
+        n_days=1,
+
+        Input Layer Params
+            ------------------------------------
+        input_neurons=64
+        input_dropout_rate=0
+        use_input_regularizer=0
+        input_regularizer_penalty=0
+
+        Hidden Layer Params
+            ------------------------------------
+        n_hidden_layers=1
+        hidden_layer_activation='relu'
+        hidden_dropout_rate=.3
+        hidden_neurons=64
+        use_hidden_regularizer=0
+        hidden_regularizer_penalty=0
+
+        Early Stopping Params
+            ------------------------------------
+        use_early_stopping=True,
+        monitor='val_loss',
+        patience=5,
+
+        Model Fit Params
+            ------------------------------------
+        epochs=2000,
+        batch_size=32,
+        shuffle=False,
+
+        Returns
+        ----------------------------------------
+        self.model(tensorflow.keras.models.Sequential)
+        OR
+        self.model(.modeling.CustomSequantial) when tuning
+            - built using parameters
+            - fit function is functools.partial with
+              defined fit arguments already plugged
+        """
 
         self.hp = hp
         if not hp and dummy_hp:
