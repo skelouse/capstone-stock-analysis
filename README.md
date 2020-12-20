@@ -37,7 +37,9 @@ After developing with the Hyperband we developed a cross validation method, as k
   A python script <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/tune.py">`tune.py`</a> which is ran with:
 ```
 python tune.py [name_of_network]
-# name_of_network being a predefined name correlating to a function that tunes that specific network on predefined hyper-parameters
+# name_of_network being a predefined name correlating to a 
+# function that tunes that specific network on predefined 
+# hyper-parameters
 ```
 
  -  A Jupyter notebook <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/Pull%20and%20clean%20data.ipynb">`Pull and clean data.ipynb`</a> for pulling and replacing all of the clean data pickles, refreshing data in the 'stock_cleaned' SQL server, and refreshing the Firebase database. 
