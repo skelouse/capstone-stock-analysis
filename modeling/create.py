@@ -106,6 +106,7 @@ class NetworkCreator():
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
+        # TODO add checks that splits are between 0 and 1
         self.test_split = test_split
         self.val_split = val_split
         self.tuning = tuning
@@ -166,6 +167,8 @@ class NetworkCreator():
                             self.X_n_features)
 
     def prepare_data_gen(self, n_days):
+        """Prepares data for the tuner, only creating
+        data_gen vs before creating train/test/val data_gens."""
         self.clean_cols()
 
         # Splits dataframe to X_cols + y_cols only
@@ -306,6 +309,13 @@ class NetworkCreator():
         """
         Splits the dataframe on defined X_cols and y_cols
         after that splitting on test_split and val_split.
+
+        Parameters
+        ----------------------------------------
+        test_split{float 0-1}::
+          - the percentage of the data to use for testing
+        val_split{float 0-1}::
+          - the percentage of the data to us for validation
         """
         try:
             if len(self.y_cols) == 1:
@@ -590,11 +600,13 @@ class NetworkCreator():
         Parameters
         ----------------------------------------
         name{type}::
-            desc
+            The name of the tuned model
+        directory(str)::
+            Where to get the parameters from
 
         Returns
         ----------------------------------------
-        self
+        parameters w/o Hyperband fit arguments
 
         Example Usage
         ----------------------------------------
@@ -643,61 +655,47 @@ class NetworkCreator():
         Creates the r2 scores for data if there is a single target
 
         """
-        cols = self.y_cols + ['predicted']
+        # all data
+        def get_prediction_set(set):
+            df_scaled = self.__dict__[f"df_{set}_scaled"]
+            data_gen = self.__dict__[f"{set}_data_gen"]
 
-        # Training data
-        train_prediction = self.model.predict(self.train_data_gen)
-        temp_df = self.df_train_scaled.copy()[self.n_input:]
-        y_true = temp_df[:, self.y_col_idx].copy()
+            # Predict from data_gen
+            prediction = self.model.predict(data_gen)
 
-        temp_df[:, self.y_col_idx] = \
-            train_prediction.reshape(len(train_prediction))
-
-        self.train_y_pred = self.X_scaler\
-            .inverse_transform(temp_df)[:, self.y_col_idx]
-
-        temp_df = self.df_train_scaled.copy()[self.n_input:]
-        temp_df[:, self.y_col_idx] = y_true
-        self.train_y_true = self.X_scaler\
-            .inverse_transform(temp_df)[:, self.y_col_idx]
-        self.train_r2 = r2_score(self.train_y_true, self.train_y_pred)
-        if _print:
-            print(f"train_r2:{self.train_r2: .2f}")
-
-        # Testing data
-        test_prediction = self.model.predict(self.test_data_gen)
-        temp_df = self.df_test_scaled.copy()[self.n_input:]
-        y_true = temp_df[:, self.y_col_idx].copy()
-        temp_df[:, self.y_col_idx] = \
-            test_prediction.reshape(len(test_prediction))
-        self.test_y_pred = self.X_scaler\
-            .inverse_transform(temp_df)[:, self.y_col_idx]
-
-        temp_df = self.df_test_scaled.copy()[self.n_input:]
-        temp_df[:, self.y_col_idx] = y_true
-        self.test_y_true = self.X_scaler\
-            .inverse_transform(temp_df)[:, self.y_col_idx]
-        self.test_r2 = r2_score(self.test_y_true, self.test_y_pred)
-        if _print:
-            print(f"test_r2:{self.test_r2: .2f}")
-
-        # Validation data
-        if self.val_split:
-            val_prediction = self.model.predict(self.val_data_gen)
-            temp_df = self.df_val_scaled.copy()[self.n_input:]
+            # Create a copy of df_scaled to use as y_true
+            temp_df = df_scaled.copy()[self.n_input:]
             y_true = temp_df[:, self.y_col_idx].copy()
+
+            # Plugging y_pred for testing predictions
             temp_df[:, self.y_col_idx] = \
-                val_prediction.reshape(len(val_prediction))
-            self.val_y_pred = self.X_scaler\
+                prediction.reshape(len(prediction))
+
+            # Inverse transforming the predictions
+            self.__dict__[f"{set}_y_pred"] = self.X_scaler\
                 .inverse_transform(temp_df)[:, self.y_col_idx]
 
-            temp_df = self.df_val_scaled.copy()[self.n_input:]
+            # Plug y_true back into dataframe, and inverse transform
+            temp_df = self.df_scaled.copy()[self.n_input:]
             temp_df[:, self.y_col_idx] = y_true
-            self.val_y_true = self.X_scaler\
+            self.__dict__[f"{set}_y_true"] = self.X_scaler\
                 .inverse_transform(temp_df)[:, self.y_col_idx]
-            self.val_r2 = r2_score(self.val_y_true, self.val_y_pred)
+
+            # set the r2 score from y_true and y_pred
+            # using sklearn.metrics.r2_score
+            r2 = r2_score(self.__dict__[f"{set}_y_true"],
+                          self.__dict__[f"{set}_y_pred"])
+            self.__dict__[f"{set}_r2"] = r2
             if _print:
-                print(f"val_r2:{self.val_r2: .2f}", )
+                print(f"{set}_r2:{r2: .2f}")
+
+        _sets = ['train', 'test']
+        if self.val_split:
+            _sets.append('val')
+
+        for _set in _sets:
+            get_prediction_set(_set)
+
 
     def get_r2_scores_multi_y(self):
         """
