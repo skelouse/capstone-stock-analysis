@@ -56,7 +56,6 @@ class NetworkBuilder():
         n_days=1,
 
         # Input Layer
-        input_neurons=64,
         input_dropout_rate=0,
         use_input_regularizer=0,
         input_regularizer_penalty=0,
@@ -163,7 +162,6 @@ class NetworkBuilder():
         self.input_layer(
             use_input_regularizer,
             input_regularizer_penalty,
-            input_neurons,
             input_dropout_rate
             )
 
@@ -198,7 +196,6 @@ class NetworkBuilder():
         self,
         use_input_regularizer,
         input_regularizer_penalty,
-        input_neurons,
         input_dropout_rate
                    ):
         #       Regularizer check
@@ -214,8 +211,7 @@ class NetworkBuilder():
                 _reg = l1(_penalty)
 
         #       Add input layer
-        input_neurons = self.n_input*self.hp.Choice('input_neurons',
-                                                    input_neurons)
+        input_neurons = self.creator.X_n_features
         self.model.add(LSTM(input_neurons,
                             input_shape=self.input_shape,
                             kernel_regularizer=_reg))

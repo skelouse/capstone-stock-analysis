@@ -6,7 +6,6 @@ if __name__ == "__main__":
 
     # Define parameters to tune
     parameters = {
-        'input_neurons': [2, 4, 8, 16],
         'input_dropout_rate': [.1, .3, .5],
         'use_input_regularizer': [0, 1, 2],
         'input_regularizer_penalty': [0.01, 0.05, 0.1, 0.3],
