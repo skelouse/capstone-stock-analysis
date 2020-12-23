@@ -223,23 +223,23 @@ class NetworkCreator():
             if self.verbose:
                 print("Got", len(self.y_cols), "y columns")
 
-    def _contains(self, sub, pri):
-        """
-        For checking if one list is inside of another
-        https://stackoverflow.com/questions/3847386/how-to-test-if-a-list-contains-another-list  # noqa
-        """
-        # TODO check if .isin() would do the same thing
-        M, N = len(pri), len(sub)
-        i, LAST = 0, M-N+1
-        while True:
-            try:
-                found = pri.index(sub[0], i, LAST)  # find first elem in sub
-            except ValueError:
-                return False
-            if pri[found:found+N] == sub:
-                return [found, found+N-1]
-            else:
-                i = found+1
+    # def _contains(self, sub, pri):
+    #     """
+    #     For checking if one list is inside of another
+    #     https://stackoverflow.com/questions/3847386/how-to-test-if-a-list-contains-another-list  # noqa
+    #     """
+    #     # TODO check if .isin() would do the same thing
+    #     M, N = len(pri), len(sub)
+    #     i, LAST = 0, M-N+1
+    #     while True:
+    #         try:
+    #             found = pri.index(sub[0], i, LAST)  # find first elem in sub
+    #         except ValueError:
+    #             return False
+    #         if pri[found:found+N] == sub:
+    #             return [found, found+N-1]
+    #         else:
+    #             i = found+1
 
     @classmethod
     def split_perc(cls, df, test_split=.3, val_split=.05):
@@ -329,11 +329,14 @@ class NetworkCreator():
                     print('target(s) equal data')
                 self.df = self.df[self.X_cols]
 
-            elif ((self._contains(self.y_cols, self.X_cols)[1]
-                  - self._contains(self.y_cols, self.X_cols)[0])
-                  + 1 == len(self.y_cols)):
+            elif set(self.y_cols).issubset(self.X_cols):
                 if self.verbose:
                     print("targets are in x")
+            # elif ((self._contains(self.y_cols, self.X_cols)[1]
+            #       - self._contains(self.y_cols, self.X_cols)[0])
+            #       + 1 == len(self.y_cols)):
+                # if self.verbose:
+                #     print("targets are in x")
 
             else:
                 if self.verbose:
@@ -378,7 +381,6 @@ class NetworkCreator():
             # Define y_col_idx
             self.y_col_idx = self.column_indices[self.y_cols[0]]
 
-
             # Scale data
             self.df_scaled = self.X_scaler.fit_transform(self.df)
 
@@ -410,6 +412,14 @@ class NetworkCreator():
             # Split df by X and y cols
             self.X_df = self.df[self.X_cols]
             self.y_df = self.df[self.y_cols]
+
+            # Tuning has it's own train test split
+            if self.tuning:
+                self.X_scaler = MinMaxScaler()
+                self.y_scaler = MinMaxScaler()
+                self.X = self.X_scaler.fit_transform(self.X_df)
+                self.y = self.y_scaler.fit_transform(self.y_df)
+                return 1
 
             self.X_df_train = self.df_train[self.X_cols]
             self.y_df_train = self.df_train[self.y_cols]
@@ -475,7 +485,7 @@ class NetworkCreator():
         """
         # Get n_features
         self.X_n_features = self.X.shape[1]
-        # print(self.X.shape)
+
         if len(self.y_cols) == 1:
             self.y_n_features = 1
         else:
