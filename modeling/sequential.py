@@ -50,6 +50,9 @@ class CustomSequential(Sequential):
         histories = []
         h = None
 
+        # For resetting the model weights between cv splits
+        original_weights = self.get_weights()
+
         # Iterate over number of k_folds
         for k in range(1, self.k_folds+1):
             train, test, val = self.nt.n_day_gens[self.n_days][k]
@@ -61,6 +64,7 @@ class CustomSequential(Sequential):
             # Calling Sequential.fit() with each fold
             # print("\n\nSHAPES")
             # print(X.shape, y.shape, X_t.shape, y_t.shape)
+            self.set_weights(original_weights)
             h = super(CustomSequential, self).fit(
                 X, y,
                 validation_data=(X_t, y_t),
