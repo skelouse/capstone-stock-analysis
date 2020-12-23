@@ -1,5 +1,5 @@
 <h1>Table of Contents<span class="tocSkip"></span></h1>
-<div class="toc"><ul class="toc-item"><li><span><a href="#Predicting-Stock-Data-with-an-LSTM-Network" data-toc-modified-id="Predicting-Stock-Data-with-an-LSTM-Network-1"><span class="toc-item-num">1&nbsp;&nbsp;</span>Predicting Stock Data with an LSTM Network</a></span><ul class="toc-item"><li><span><a href="#Abstract" data-toc-modified-id="Abstract-1.1"><span class="toc-item-num">1.1&nbsp;&nbsp;</span>Abstract</a></span></li><li><span><a href="#Using-the-OSEMN-Process" data-toc-modified-id="Using-the-OSEMN-Process-1.2"><span class="toc-item-num">1.2&nbsp;&nbsp;</span>Using the OSEMN Process</a></span></li><li><span><a href="#This-repository-contains" data-toc-modified-id="This-repository-contains-1.3"><span class="toc-item-num">1.3&nbsp;&nbsp;</span>This repository contains</a></span></li></ul></li><li><span><a href="#Scrubbing-the-data" data-toc-modified-id="Scrubbing-the-data-2"><span class="toc-item-num">2&nbsp;&nbsp;</span>Scrubbing the data</a></span><ul class="toc-item"><li><span><a href="#Prices" data-toc-modified-id="Prices-2.1"><span class="toc-item-num">2.1&nbsp;&nbsp;</span>Prices</a></span></li><li><span><a href="#Splits" data-toc-modified-id="Splits-2.2"><span class="toc-item-num">2.2&nbsp;&nbsp;</span>Splits</a></span></li><li><span><a href="#Performance" data-toc-modified-id="Performance-2.3"><span class="toc-item-num">2.3&nbsp;&nbsp;</span>Performance</a></span></li><li><span><a href="#Company" data-toc-modified-id="Company-2.4"><span class="toc-item-num">2.4&nbsp;&nbsp;</span>Company</a></span></li><li><span><a href="#Analyst" data-toc-modified-id="Analyst-2.5"><span class="toc-item-num">2.5&nbsp;&nbsp;</span>Analyst</a></span></li><li><span><a href="#Combined-Company/Analyst/Performance" data-toc-modified-id="Combined-Company/Analyst/Performance-2.6"><span class="toc-item-num">2.6&nbsp;&nbsp;</span>Combined Company/Analyst/Performance</a></span></li></ul></li><li><span><a href="#Visualzations" data-toc-modified-id="Visualzations-3"><span class="toc-item-num">3&nbsp;&nbsp;</span>Visualzations</a></span><ul class="toc-item"><li><span><a href="#Our-SP500" data-toc-modified-id="Our-SP500-3.1"><span class="toc-item-num">3.1&nbsp;&nbsp;</span>Our SP500</a></span></li><li><span><a href="#Comparing-our-scraped-AAPL-price-to-yahoo-finance" data-toc-modified-id="Comparing-our-scraped-AAPL-price-to-yahoo-finance-3.2"><span class="toc-item-num">3.2&nbsp;&nbsp;</span>Comparing our scraped AAPL price to yahoo finance</a></span></li><li><span><a href="#AAPL-differencing-of-features-compared-to-price" data-toc-modified-id="AAPL-differencing-of-features-compared-to-price-3.3"><span class="toc-item-num">3.3&nbsp;&nbsp;</span>AAPL differencing of features compared to price</a></span></li><li><span><a href="#Positive-and-negative-correlations-to-price" data-toc-modified-id="Positive-and-negative-correlations-to-price-3.4"><span class="toc-item-num">3.4&nbsp;&nbsp;</span>Positive and negative correlations to price</a></span></li><li><span><a href="#Lack-of-overall-correlations" data-toc-modified-id="Lack-of-overall-correlations-3.5"><span class="toc-item-num">3.5&nbsp;&nbsp;</span>Lack of overall correlations</a></span></li></ul></li><li><span><a href="#First-model" data-toc-modified-id="First-model-4"><span class="toc-item-num">4&nbsp;&nbsp;</span>First model</a></span><ul class="toc-item"><li><span><a href="#Base-model-predictions" data-toc-modified-id="Base-model-predictions-4.1"><span class="toc-item-num">4.1&nbsp;&nbsp;</span>Base model predictions</a></span></li><li><span><a href="#Manually-tuned-model-predictions" data-toc-modified-id="Manually-tuned-model-predictions-4.2"><span class="toc-item-num">4.2&nbsp;&nbsp;</span>Manually tuned model predictions</a></span><ul class="toc-item"><li><span><a href="#Interpretation-totals" data-toc-modified-id="Interpretation-totals-4.2.1"><span class="toc-item-num">4.2.1&nbsp;&nbsp;</span>Interpretation totals</a></span></li><li><span><a href="#Interpretation-value" data-toc-modified-id="Interpretation-value-4.2.2"><span class="toc-item-num">4.2.2&nbsp;&nbsp;</span>Interpretation value</a></span></li></ul></li><li><span><a href="#Auto-tuned-model-predictions" data-toc-modified-id="Auto-tuned-model-predictions-4.3"><span class="toc-item-num">4.3&nbsp;&nbsp;</span>Auto-tuned model predictions</a></span></li></ul></li><li><span><a href="#Hyper-parameter-tuning-methodology" data-toc-modified-id="Hyper-parameter-tuning-methodology-5"><span class="toc-item-num">5&nbsp;&nbsp;</span>Hyper-parameter tuning methodology</a></span><ul class="toc-item"><li><span><a href="#tune.py" data-toc-modified-id="tune.py-5.1"><span class="toc-item-num">5.1&nbsp;&nbsp;</span>tune.py</a></span></li><li><span><a href="#nt.tune" data-toc-modified-id="nt.tune-5.2"><span class="toc-item-num">5.2&nbsp;&nbsp;</span>nt.tune</a></span></li><li><span><a href="#NetworkBuilder" data-toc-modified-id="NetworkBuilder-5.3"><span class="toc-item-num">5.3&nbsp;&nbsp;</span>NetworkBuilder</a></span></li><li><span><a href="#tuner.search" data-toc-modified-id="tuner.search-5.4"><span class="toc-item-num">5.4&nbsp;&nbsp;</span>tuner.search</a></span></li></ul></li><li><span><a href="#Conclusion" data-toc-modified-id="Conclusion-6"><span class="toc-item-num">6&nbsp;&nbsp;</span>Conclusion</a></span><ul class="toc-item"><li><span><a href="#Next-Steps" data-toc-modified-id="Next-Steps-6.1"><span class="toc-item-num">6.1&nbsp;&nbsp;</span>Next Steps</a></span></li></ul></li><li><span><a href="#Folder-Structure" data-toc-modified-id="Folder-Structure-7"><span class="toc-item-num">7&nbsp;&nbsp;</span>Folder Structure</a></span></li><li><span><a href="#Repository-Structure" data-toc-modified-id="Repository-Structure-8"><span class="toc-item-num">8&nbsp;&nbsp;</span>Repository Structure</a></span></li></ul></div>
+<div class="toc"><ul class="toc-item"><li><span><a href="#Predicting-Stock-Data-with-an-LSTM-Network" data-toc-modified-id="Predicting-Stock-Data-with-an-LSTM-Network-1"><span class="toc-item-num">1&nbsp;&nbsp;</span>Predicting Stock Data with an LSTM Network</a></span><ul class="toc-item"><li><span><a href="#Abstract" data-toc-modified-id="Abstract-1.1"><span class="toc-item-num">1.1&nbsp;&nbsp;</span>Abstract</a></span></li><li><span><a href="#Using-the-OSEMN-Process" data-toc-modified-id="Using-the-OSEMN-Process-1.2"><span class="toc-item-num">1.2&nbsp;&nbsp;</span>Using the OSEMN Process</a></span></li><li><span><a href="#This-repository-contains" data-toc-modified-id="This-repository-contains-1.3"><span class="toc-item-num">1.3&nbsp;&nbsp;</span>This repository contains</a></span></li></ul></li><li><span><a href="#Scrubbing-the-data" data-toc-modified-id="Scrubbing-the-data-2"><span class="toc-item-num">2&nbsp;&nbsp;</span>Scrubbing the data</a></span><ul class="toc-item"><li><span><a href="#Prices" data-toc-modified-id="Prices-2.1"><span class="toc-item-num">2.1&nbsp;&nbsp;</span>Prices</a></span></li><li><span><a href="#Splits" data-toc-modified-id="Splits-2.2"><span class="toc-item-num">2.2&nbsp;&nbsp;</span>Splits</a></span></li><li><span><a href="#Performance" data-toc-modified-id="Performance-2.3"><span class="toc-item-num">2.3&nbsp;&nbsp;</span>Performance</a></span></li><li><span><a href="#Company" data-toc-modified-id="Company-2.4"><span class="toc-item-num">2.4&nbsp;&nbsp;</span>Company</a></span></li><li><span><a href="#Analyst" data-toc-modified-id="Analyst-2.5"><span class="toc-item-num">2.5&nbsp;&nbsp;</span>Analyst</a></span></li><li><span><a href="#Combined-Company/Analyst/Performance" data-toc-modified-id="Combined-Company/Analyst/Performance-2.6"><span class="toc-item-num">2.6&nbsp;&nbsp;</span>Combined Company/Analyst/Performance</a></span></li></ul></li><li><span><a href="#Visualzations" data-toc-modified-id="Visualzations-3"><span class="toc-item-num">3&nbsp;&nbsp;</span>Visualzations</a></span><ul class="toc-item"><li><span><a href="#Our-SP500" data-toc-modified-id="Our-SP500-3.1"><span class="toc-item-num">3.1&nbsp;&nbsp;</span>Our SP500</a></span></li><li><span><a href="#Comparing-our-scraped-AAPL-price-to-yahoo-finance" data-toc-modified-id="Comparing-our-scraped-AAPL-price-to-yahoo-finance-3.2"><span class="toc-item-num">3.2&nbsp;&nbsp;</span>Comparing our scraped AAPL price to yahoo finance</a></span></li><li><span><a href="#AAPL-difference-of-features-compared-to-price" data-toc-modified-id="AAPL-difference-of-features-compared-to-price-3.3"><span class="toc-item-num">3.3&nbsp;&nbsp;</span>AAPL difference of features compared to price</a></span></li><li><span><a href="#Positive-and-negative-correlations-to-price" data-toc-modified-id="Positive-and-negative-correlations-to-price-3.4"><span class="toc-item-num">3.4&nbsp;&nbsp;</span>Positive and negative correlations to price</a></span></li><li><span><a href="#Lack-of-overall-correlations" data-toc-modified-id="Lack-of-overall-correlations-3.5"><span class="toc-item-num">3.5&nbsp;&nbsp;</span>Lack of overall correlations</a></span></li></ul></li><li><span><a href="#First-model" data-toc-modified-id="First-model-4"><span class="toc-item-num">4&nbsp;&nbsp;</span>First model</a></span><ul class="toc-item"><li><span><a href="#Base-model-predictions" data-toc-modified-id="Base-model-predictions-4.1"><span class="toc-item-num">4.1&nbsp;&nbsp;</span>Base model predictions</a></span></li><li><span><a href="#Manually-tuned-model-predictions" data-toc-modified-id="Manually-tuned-model-predictions-4.2"><span class="toc-item-num">4.2&nbsp;&nbsp;</span>Manually tuned model predictions</a></span><ul class="toc-item"><li><span><a href="#Interpretation-totals" data-toc-modified-id="Interpretation-totals-4.2.1"><span class="toc-item-num">4.2.1&nbsp;&nbsp;</span>Interpretation totals</a></span></li><li><span><a href="#Interpretation-value" data-toc-modified-id="Interpretation-value-4.2.2"><span class="toc-item-num">4.2.2&nbsp;&nbsp;</span>Interpretation value</a></span></li></ul></li><li><span><a href="#Auto-tuned-model-predictions" data-toc-modified-id="Auto-tuned-model-predictions-4.3"><span class="toc-item-num">4.3&nbsp;&nbsp;</span>Auto-tuned model predictions</a></span></li></ul></li><li><span><a href="#Hyper-parameter-tuning-methodology" data-toc-modified-id="Hyper-parameter-tuning-methodology-5"><span class="toc-item-num">5&nbsp;&nbsp;</span>Hyper-parameter tuning methodology</a></span><ul class="toc-item"><li><span><a href="#tune.py" data-toc-modified-id="tune.py-5.1"><span class="toc-item-num">5.1&nbsp;&nbsp;</span>tune.py</a></span></li><li><span><a href="#nt.tune" data-toc-modified-id="nt.tune-5.2"><span class="toc-item-num">5.2&nbsp;&nbsp;</span>nt.tune</a></span></li><li><span><a href="#NetworkBuilder" data-toc-modified-id="NetworkBuilder-5.3"><span class="toc-item-num">5.3&nbsp;&nbsp;</span>NetworkBuilder</a></span></li><li><span><a href="#tuner.search" data-toc-modified-id="tuner.search-5.4"><span class="toc-item-num">5.4&nbsp;&nbsp;</span>tuner.search</a></span></li></ul></li><li><span><a href="#Conclusion" data-toc-modified-id="Conclusion-6"><span class="toc-item-num">6&nbsp;&nbsp;</span>Conclusion</a></span><ul class="toc-item"><li><span><a href="#Next-Steps" data-toc-modified-id="Next-Steps-6.1"><span class="toc-item-num">6.1&nbsp;&nbsp;</span>Next Steps</a></span></li></ul></li><li><span><a href="#Folder-Structure" data-toc-modified-id="Folder-Structure-7"><span class="toc-item-num">7&nbsp;&nbsp;</span>Folder Structure</a></span></li><li><span><a href="#Repository-Structure" data-toc-modified-id="Repository-Structure-8"><span class="toc-item-num">8&nbsp;&nbsp;</span>Repository Structure</a></span></li></ul></div>
 
 # Predicting Stock Data with an LSTM Network
 
@@ -11,11 +11,11 @@
 <p>
 Do you want to GET RICH QUICK?  Going this route has many heartaches, and decision trees to traverse such as.
     <ul>
-        <li>Drop some sparse columns, or fill the missing data with 0?</li>  <li>Do you <a href="https://hackernoon.com/what-is-one-hot-encoding-why-and-when-do-you-have-to-use-it-e3c6186d008f">one hot encode</a> an analyst saying "BUY", "HOLD", or map numerical values to each of the given features?</li> <li>What if there are irregularties in the price data you have, how do you fix them?</li></ul>  All of these and more are valid questions we had to answer, and have a direct effect on the predictions of our networks.  If in the end our predictions do gain profits we will become <a href="https://cryptohustle.com/market-makers-vs-market-movers/#:~:text=Market%20movers%20are%20traders%20or,that%20can%20influence%20price%20action.">market movers</a>, and eventually the market will work out the methods we are using to predict.</p>
+        <li>Drop some sparse columns, or fill the missing data with 0?</li>  <li>Do you <a href="https://hackernoon.com/what-is-one-hot-encoding-why-and-when-do-you-have-to-use-it-e3c6186d008f">one hot encode</a> an analyst saying "BUY", "HOLD", or map numerical values to each of the given features?</li> <li>What if there are irregularities in the price data you have, how do you fix them?</li></ul>  All of these and more are valid questions we had to answer, and have a direct effect on the predictions of our networks.  If in the end our predictions do gain profits we will become <a href="https://cryptohustle.com/market-makers-vs-market-movers/#:~:text=Market%20movers%20are%20traders%20or,that%20can%20influence%20price%20action.">market movers</a>, and eventually the market will work out the methods we are using to predict.</p>
 <p>
-Our data was scraped using Selenium from an investment firm consisting of analyst opinions, performance statistics, prices, and company information for 7000+ stock symbols from August, 9th of 2019 to present.   Although after cleaning our data, and dropping irregularties we end with roughly 2000 symbols.</p>
+Our data was scraped using Selenium from an investment firm consisting of analyst opinions, performance statistics, prices, and company information for 7000+ stock symbols from August, 9th of 2019 to present.   Although after cleaning our data, and dropping irregularities we end with roughly 2000 symbols.</p>
 
-<p>We are predicting <a href="https://towardsdatascience.com/how-to-predict-a-time-series-part-1-6d7eb182b540">time series data</a>, so we have to define things such as the number of days to predict the next with.  The data is then transformed into multiple matrices of X_data correlating to y_targets.  The X_data being all of the data from n day(s) before, and the y_targets being the data we are trying to predict. If one wanted to know the information two days ahead they would have to predict all of the data for one day then use the predicted data to predict the next, or structure the data in such a way where one day is being used to predict two.</p>
+<p>We are predicting <a href="https://towardsdatascience.com/how-to-predict-a-time-series-part-1-6d7eb182b540">time series data</a>, so we have to define things such as the number of days to predict the next with.  The data is then transformed into multiple matrices of X_data correlating to y_targets.  The X_data being all the data from n day(s) before, and the y_targets being the data we are trying to predict. If one wanted to know the information two days ahead they would have to predict all the data for one day then use the predicted data to predict the next, or structure the data in such a way where one day is being used to predict two.</p>
     
 <p>Our first networks had infinite loss due to predicting everything as 0, so we had to devise a method for creating the best network to use on the data.  There are few `plug-and-play` methods for tuning neural networks, and especially tuning Time Series predicting networks.  The method we did find was a Hyperband from <a href="https://keras-team.github.io/keras-tuner/">kerastuner</a>.  The Hyperband takes a build function and inside of the build function one can use a Hyperband choice function which reports back to the Hyperband what effect a given quotient had on the validation loss of the network.  Our **NetworkTuner** can tune items such as:
 <ul>
@@ -54,7 +54,7 @@ python tune.py [name_of_network]
 # hyper-parameters
 ```
 
- -  A Jupyter notebook <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/Pull%20and%20clean%20data.ipynb">`Pull and clean data.ipynb`</a> for pulling and replacing all of the pickles of data, refreshing data in the 'stock_cleaned' SQL server, and refreshing the Firebase database. 
+ -  A Jupyter notebook <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/Pull%20and%20clean%20data.ipynb">`Pull and clean data.ipynb`</a> for pulling and replacing all the pickles of data, refreshing data in the 'stock_cleaned' SQL server, and refreshing the Firebase database. 
 
 
 - Folder <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/db">`db`</a> with files <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/db/firebase.py">`firebase.py`</a> and <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/db/database.py">`database.py`</a> for connecting to and posting to Google Firebase and our SQL server.
@@ -77,13 +77,13 @@ with class **NetworkTuner** for tuning a neural network's architecture, and data
 - Folder <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old">`old`</a> (unorganized) with files:
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old/Old%20Modeling.ipynb">`Old Modeling.ipynb`</a> 
-Which is a Jupyter Notebook where I failed to predict on all of the data
+Which is a Jupyter Notebook where I failed to predict on all the data
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old/Old%20main.ipynb">`Old main.ipynb`</a> 
 Which is my original Jupyter Notebook containing the scrubbing process, and attempts at modeling
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old/Old%20main2.ipynb">`Old main2.ipynb`</a> 
-Which is a Jupyter Notebook showing my attempt at predicting all of the data from three sides before realizing it was impossible with my single GPU, and that company info is irrelevant there since it is unchanging.
+Which is a Jupyter Notebook showing my attempt at predicting all the data from three sides before realizing it was impossible with my single GPU, and that company info is irrelevant there since it is unchanging.
 
   - <a href="https://github.com/skelouse/capstone-stock-analysis/blob/master/old/Pull%20and%20update%20data.ipynb">`Pull and update data.ipynb`</a> 
 Which is an almost working notebook for updating the data rather than pulling it all and updating everything.
@@ -131,7 +131,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
         <li>Match index to price index</li>
         <li>Fill null ExDividend dates with 1970-01-01 then encode days since then for numerical data</li>
         <li>Decide columns to fill, and columns to fill then drop if the symbol still has null values</li>
-        <li>Interpolate null values for both, fill na for columns to fill</li>
+        <li>Interpolate null values for both, fill Na for columns to fill</li>
         <li>Drop columns with negative min that still have many null values</li>
         <li>Drop symbols that still have null values in the columns with a negative minimum as filling with 0 not be adequate.</li>
         <li>Add price to performance</li>
@@ -157,9 +157,9 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
     <h2>Combined Company/Analyst/Performance</h2>
     <ul>
         <li>One hot encode Company</li>
-        <li>Combine the three dataframes into one</li>
+        <li>Combine the three data frames into one</li>
     </ul>
-    <p><b>After the process is complte, we update Firebase for website with performance and performance penny,  possibly company and analyst if added later</b></p>
+    <p><b>After the process is complete, we update Firebase for website with performance and performance penny,  possibly company and analyst if added later.</b></p>
 
 
 # Visualzations
@@ -175,17 +175,17 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 ![compared_sp500](./img/our_data_compared.png)
 ©2020 Verizon Media.
 
-## AAPL differencing of features compared to price
-> Here we differenced each feature so that the 2nd day is now (1st day) subtracted from (2nd day) and so on.  We then plot that on the same scale as price to see if there are any indicators of price jumps, and to check the vitality of our data.
+## AAPL difference of features compared to price
+> Here we difference each feature so that the 2nd day is now (1st day) subtracted from (2nd day) and so on.  We then plot that on the same scale as price to see if there are any indicators of price jumps, and to check the vitality of our data.
 
-![aapl_differenced](./img/aapl_differ.jpg)
+![aapl_difference](./img/aapl_differ.jpg)
 
 <div class="alert alert-warning">
   <strong>About the plot:</strong>
     <ul>
-        <li>You can see when appl price split in `VolumeAvg90Day` peaked.
+        <li>You can see where AAPL had a price split when `VolumeAvg90Day` peaked.
         </li>
-        <li>Features such as `ReturnonEquity` are quarterly reports, thus they are showing differencing on the quarters.</li>
+        <li>Features such as `ReturnonEquity` are quarterly reports, thus they are showing difference on the quarters.</li>
     </ul>
 </div>
 
@@ -201,7 +201,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 
 ## Lack of overall correlations
 > Here we took the overall prediction quality of each column, and plotted their sum qualities for each symbol.
-> The quality was determined by how well a given feature correlated to changes in all of the other features.
+> The quality was determined by how well a given feature correlated to changes in all the other features.
 
 ![lack_of_correlation](./bin/highlight_bad_columns_one_day.jpg)
 
@@ -219,7 +219,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
   <strong>About the plot!</strong>
     <ul>
         <li>The network is not doing too well at predicting the test or validation data</li>
-        <li>Drop in quality of the testing data is showing through, as AAPL had a split in September of 2020</li>
+        <li>Drop in quality of the testing data is showing through, as AAPL had a split in September 2020</li>
     </ul>
 </div>
 
@@ -256,7 +256,7 @@ Which is a Jupyter Notebook containing the actual function tests that were used 
 <div class="alert alert-warning shadow">
   <strong>About the plot!</strong>
     <ul>
-        <li>AAPL_TotalReturn1Yr going up is predicting that price will go up.  This correlates to our correlation where AAPL_TR1YR was correlating positively to price</li>
+        <li>AAPL_TotalReturn1Yr going up is predicting that price will go up.  This correlates to our correlation where AAPL_TR1YR was correlating positively to price.</li>
     </ul>
 </div>
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         'n_days': [1, 2, 3]
     }
     
-    # Build the test dataframe
+    # Build the test data frame
     _list = list(range(20))
     df = pd.DataFrame({
         'apple': copy.copy(_list),
@@ -422,7 +422,7 @@ def fit(self, nt, **kwargs):
 ## Next Steps
 > * Cluster on absolute correlation takeing correlation for different symbols.
 > * Tune network on which columns are being used for predictions.
-> * Tune network with vs without differencing and/or scaling.
+> * Tune network with vs without difference data and/or scaling.
 > * Forecast tomorrow's prices
 
 # Folder Structure
