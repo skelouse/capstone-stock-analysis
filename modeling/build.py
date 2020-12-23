@@ -4,7 +4,7 @@ from keras import backend as K
 from tensorflow.python.keras.layers.noise import GaussianNoise
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import Dense, Dropout, LSTM
+from tensorflow.keras.layers import Dense, Dropout, LSTM, GaussianNoise
 from tensorflow.keras.regularizers import l2, l1
 
 from .sequential import CustomSequential
@@ -40,7 +40,7 @@ class NetworkBuilder():
     # hidden_neurons = 3
     # -> hidden_neurons = [3]
     # may be able to remove dummy_hp quotient, and simply change everything
-    # that is not a list to a list.  Then if len of all are one use dummy
+    # that is not a list to a list.  Thus if len of all are one use dummy
     # else if they are not all one use the provided hp.
     def __init__(self, creator, n_input, input_shape, output_shape):
         self.creator = creator
@@ -60,7 +60,13 @@ class NetworkBuilder():
         use_input_regularizer=0,
         input_regularizer_penalty=0,
 
-        # Hidden layer
+        # Hidden layers
+        #   Solo
+        add_gaussian_noise=0,
+        gaussian_noise_quotient=0,
+        add_hidden_lstm=0,
+        hidden_lstm_neurons=64,
+        #   Group
         n_hidden_layers=1,
         hidden_layer_activation='relu',
         hidden_dropout_rate=.3,
@@ -68,13 +74,15 @@ class NetworkBuilder():
         use_hidden_regularizer=0,
         hidden_regularizer_penalty=0,
 
+        # Compile
+        optimizer='adam',
+
         # Model fit
         #   Early Stopping
-        use_early_stopping=True,
+        use_early_stopping=False,
         monitor='val_loss',
         patience=5,
         #   Fit
-        epochs=2000,
         batch_size=32,
         shuffle=False,
 
@@ -103,12 +111,22 @@ class NetworkBuilder():
 
         Hidden Layer Params
             ------------------------------------
+        #   Solo
+        add_gaussian_noise=0,
+        gaussian_noise_quotient=0,
+        add_hidden_lstm=0,
+        hidden_lstm_neurons=64,
+        #   Group
         n_hidden_layers=1
         hidden_layer_activation='relu'
         hidden_dropout_rate=.3
         hidden_neurons=64
         use_hidden_regularizer=0
         hidden_regularizer_penalty=0
+
+        Compile Params
+            ------------------------------------
+        optimizer='adam'
 
         Early Stopping Params
             ------------------------------------
@@ -118,7 +136,6 @@ class NetworkBuilder():
 
         Model Fit Params
             ------------------------------------
-        epochs=2000,
         batch_size=32,
         shuffle=False,
 
@@ -131,7 +148,6 @@ class NetworkBuilder():
             - fit function is functools.partial with
               defined fit arguments already plugged
         """
-
         self.hp = hp
         if not hp and dummy_hp:
             self.hp = DummyHp()
@@ -158,11 +174,23 @@ class NetworkBuilder():
                                     n_days)
             self.model = CustomSequential(self.creator.k_folds, n_days)
 
+            # Creating new input shape to account for n_days
+            self.input_shape = \
+                (n_days,
+                 self.input_shape[1])
+
         # Input layer
         self.input_layer(
             use_input_regularizer,
             input_regularizer_penalty,
             input_dropout_rate
+            )
+
+        self.hidden_special(
+            add_gaussian_noise,
+            gaussian_noise_quotient,
+            add_hidden_lstm,
+            hidden_lstm_neurons
             )
 
         # Hidden layers
@@ -176,6 +204,7 @@ class NetworkBuilder():
             )
 
         self.output_layer(
+            optimizer
             )
 
         self.make_fit(
@@ -186,7 +215,6 @@ class NetworkBuilder():
             patience,
 
             #   Fit
-            epochs,
             batch_size,
             shuffle,
         )
@@ -214,7 +242,8 @@ class NetworkBuilder():
         input_neurons = self.creator.X_n_features
         self.model.add(LSTM(input_neurons,
                             input_shape=self.input_shape,
-                            kernel_regularizer=_reg))
+                            kernel_regularizer=_reg,
+                            return_sequences=True))
 
         #           Dropout layer
         input_dropout_rate = self.hp.Choice('input_dropout_rate',
@@ -222,7 +251,22 @@ class NetworkBuilder():
         if input_dropout_rate != 0:
             self.model.add(Dropout(input_dropout_rate))
 
-        self.model.add(GaussianNoise(1))
+    def hidden_special(
+        self,
+        add_gaussian_noise,
+        gaussian_noise_quotient,
+        add_hidden_lstm,
+        hidden_lstm_neurons
+    ):
+        if self.hp.Choice('add_hidden_lstm', add_hidden_lstm):
+            neurons = self.hp.Choice('hidden_lstm_neurons',
+                                     hidden_lstm_neurons)
+            self.model.add(LSTM(neurons, activation='relu'))
+
+        if self.hp.Choice('add_gaussian_noise', add_gaussian_noise):
+            gaussian_noise = self.hp.Choice('gaussian_noise_quotient',
+                                            gaussian_noise_quotient)
+            self.model.add(GaussianNoise(gaussian_noise))
 
     def hidden_layers(
         self,
@@ -239,8 +283,6 @@ class NetworkBuilder():
         _use_reg = self.hp.Choice('use_hidden_regularizer',
                                   use_hidden_regularizer)
         if _use_reg:
-            print("\n\nhidden_regularizer_penalty\n")
-            print(hidden_regularizer_penalty)
 
             _penalty = self.hp.Choice('hidden_regularizer_penalty',
                                       hidden_regularizer_penalty)
@@ -264,13 +306,15 @@ class NetworkBuilder():
                 self.model.add(Dropout(hidden_dropout_rate))
 
     def output_layer(
-        self
+        self,
+        optimizer
                     ):
         #   Output Layer
         self.model.add(Dense(self.output_shape))
 
         #   Compile
-        self.model.compile(optimizer='adam',
+        optimizer = self.hp.Choice('optimizer', optimizer)
+        self.model.compile(optimizer=optimizer,
                            loss='mse')
 
     def make_fit(
@@ -282,7 +326,6 @@ class NetworkBuilder():
         patience=5,
 
         #   Fit
-        epochs=2000,
         batch_size=32,
         shuffle=False,
                 ):
