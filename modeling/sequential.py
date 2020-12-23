@@ -59,12 +59,13 @@ class CustomSequential(Sequential):
             X_t, y_t = test[0]
 
             # Calling Sequential.fit() with each fold
+            # print("\n\nSHAPES")
+            # print(X.shape, y.shape, X_t.shape, y_t.shape)
             h = super(CustomSequential, self).fit(
                 X, y,
                 validation_data=(X_t, y_t),
                 **kwargs)
             histories.append(h.history)
-
         # Get and return average of model histories
         df = pd.DataFrame(histories)
         h.history['loss'] = np.array(df['loss'].sum()) / len(df)
