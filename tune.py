@@ -35,7 +35,7 @@ def train_aapl_all_sectors():
         'use_hidden_regularizer': [0, 1, 2],
         'hidden_regularizer_penalty': [0.01, 0.1],  # 0.01, 0.05, 0.1, 0.3
         'patience': [0],  # [5, 25, 50, 100],
-        'batch_size': [batch_size],
+        'batch_size': [64, 128, batch_size],
         'use_early_stopping': [0],  # [0, 1]
         'n_days': [1, 2, 3, 4],
         'optimizer': ['adam', 'rmsprop']
