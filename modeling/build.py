@@ -179,6 +179,11 @@ class NetworkBuilder():
                 (n_days,
                  self.input_shape[1])
 
+        # Needs to go to input layer and hidden special
+        # as return_sequences is false or true
+        # depending on if there is another LSTM layer or not
+        self.add_hidden_lstm = self.hp.Choice('add_hidden_lstm',
+                                              add_hidden_lstm)
         # Input layer
         self.input_layer(
             use_input_regularizer,
@@ -189,7 +194,6 @@ class NetworkBuilder():
         self.hidden_special(
             add_gaussian_noise,
             gaussian_noise_quotient,
-            add_hidden_lstm,
             hidden_lstm_neurons
             )
 
@@ -243,7 +247,7 @@ class NetworkBuilder():
         self.model.add(LSTM(input_neurons,
                             input_shape=self.input_shape,
                             kernel_regularizer=_reg,
-                            return_sequences=True))
+                            return_sequences=self.add_hidden_lstm))
 
         #           Dropout layer
         input_dropout_rate = self.hp.Choice('input_dropout_rate',
@@ -255,10 +259,9 @@ class NetworkBuilder():
         self,
         add_gaussian_noise,
         gaussian_noise_quotient,
-        add_hidden_lstm,
         hidden_lstm_neurons
     ):
-        if self.hp.Choice('add_hidden_lstm', add_hidden_lstm):
+        if self.add_hidden_lstm:
             neurons = self.hp.Choice('hidden_lstm_neurons',
                                      hidden_lstm_neurons)
             self.model.add(LSTM(neurons, activation='relu'))

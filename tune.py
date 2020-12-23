@@ -29,7 +29,7 @@ def train_aapl_all_sectors():
         'hidden_lstm_neurons': [32, 64],
         'add_gaussian_noise': [0, 1],
         'gaussian_noise_quotient': [.5, 1.0, 3.0],
-        'n_hidden_layers': [0, 1, 2, 4],
+        'n_hidden_layers': [1, 2, 4],
         'hidden_dropout_rate': [0.0, .1, .3],  # .3, .5, .9
         'hidden_neurons': [16, 32, 64, batch_size],
         'use_hidden_regularizer': [0, 1, 2],
@@ -65,7 +65,7 @@ def test():
         'patience': [0],  # [5, 25, 50, 100],
         'batch_size': [batch_size],
         'use_early_stopping': [0],  # [0, 1]
-        'n_days': [1, 2, 3, 4],
+        'n_days': [2],
         'optimizer': ['adam', 'rmsprop']
     }
 
@@ -97,5 +97,5 @@ def test():
 
 
 if __name__ == "__main__":
-    # train_aapl_all_sectors()
-    test()
+    train_aapl_all_sectors()
+    # test()
