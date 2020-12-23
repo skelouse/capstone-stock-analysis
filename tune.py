@@ -18,7 +18,7 @@ def train_aapl_all_sectors():
 
     nt = NetworkTuner(
         df=industry_df, X_cols=X_cols,
-        y_cols=y_cols, k_folds=5, max_n_days=4
+        y_cols=y_cols, k_folds=5, max_n_days=8
     )
     batch_size = nt.X_n_features
     parameters = {
@@ -37,7 +37,7 @@ def train_aapl_all_sectors():
         'patience': [0],  # [5, 25, 50, 100],
         'batch_size': [64, 128, batch_size],
         'use_early_stopping': [0],  # [0, 1]
-        'n_days': [1, 2, 3, 4],
+        'n_days': [1, 2, 3, 8],
         'optimizer': ['adam', 'rmsprop']
     }
 
