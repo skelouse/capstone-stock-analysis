@@ -625,22 +625,8 @@ class NetworkCreator():
         >>> 
         >>> 
         """
-        parameters = {
-            'input_neurons': [16, 32, 64],
-            'input_dropout_rate': [.1, .3, .5],
-            'use_input_regularizer': [0, 1, 2],
-            'input_regularizer_penalty': [0.01, 0.05, 0.1, 0.3],
-            'n_hidden_layers': [1, 3, 5, 8],
-            'hidden_dropout_rate': [0.0, .3, .5, .9],
-            'hidden_neurons': [16, 32, 64],
-            'use_hidden_regularizer': [0, 1, 2],
-            'hidden_regularizer_penalty': [0.01, 0.05, 0.1, 0.3],
-            'patience': [5, 25, 50, 100],
-            'batch_size': [32, 64, 128],
-            'use_early_stopping': [0, 1]
-        }
         self.build_and_fit_model = partial(
-            self.build_and_fit_model, **parameters
+            self.build_and_fit_model, dummy_hp=True
                                              )
         tuner = kt.Hyperband(self.build_and_fit_model,
                              objective='val_loss',
@@ -734,8 +720,13 @@ class NetworkCreator():
                              columns=self.y_cols,
                              index=prediction_idx)
 
+            y_pred = self.__dict__[f"df_predict_{set}"]
             # Getting y_true by locing from df the index of df_predict
-            y_true = df.loc[self.__dict__[f"df_predict_{set}"].index]
+            y_true = df.loc[y_pred.index]
+
+            # Setting y_true and pred
+            self.__dict__[f"{set}_y_true"] = y_true
+            self.__dict__[f"{set}_y_pred"] = y_pred
 
             # Calculating r2_score with sklearn.metrics.r2_score
             r2 = r2_score(y_true, self.__dict__[f"df_predict_{set}"])
