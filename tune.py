@@ -3,6 +3,54 @@ import pandas as pd
 from modeling.tuner import NetworkTuner
 
 
+def train_aapl_all_sectors_2nd_day():
+    model_df = pd.read_pickle("./data/modeling/model_df_cols_dropped.pkl")
+    company_df = pd.read_pickle("./data/company.pkl")
+    industry = company_df.loc['AAPL']['industry']
+    industry_syms = list(company_df.loc[
+                         company_df['industry'] == industry].index)
+    slice_cols = [col for col in model_df.columns
+                  if col.split('_')[0] in industry_syms]
+    industry_df = model_df[slice_cols].copy()
+
+    X_cols = list(industry_df.columns)
+    y_cols = 'price'
+
+    target_columns = [col for col in industry_df.columns if 'price' in col]
+    shifted_targets = industry_df[target_columns].shift(1)
+    industry_df[target_columns] = shifted_targets
+    industry_df.dropna(inplace=True)
+
+    nt = NetworkTuner(
+        df=industry_df, X_cols=X_cols,
+        y_cols=y_cols, k_folds=5, max_n_days=8
+    )
+    batch_size = nt.X_n_features
+    parameters = {
+        'input_dropout_rate': [.1, .3, .5],
+        'use_input_regularizer': [0, 1, 2],
+        'input_regularizer_penalty': [0.01, 0.1],  # 0.01, 0.05, 0.1, 0.3
+        'add_hidden_lstm': [0, 1],
+        'hidden_lstm_neurons': [32, 64],
+        'add_gaussian_noise': [0, 1],
+        'gaussian_noise_quotient': [.5, 1.0, 3.0],
+        'n_hidden_layers': [1, 2, 4],
+        'hidden_dropout_rate': [0.0, .1, .3],  # .3, .5, .9
+        'hidden_neurons': [16, 32, 64, batch_size],
+        'use_hidden_regularizer': [0, 1, 2],
+        'hidden_regularizer_penalty': [0.01, 0.1],  # 0.01, 0.05, 0.1, 0.3
+        'patience': [0],  # [5, 25, 50, 100],
+        'batch_size': [64, 128, batch_size],
+        'use_early_stopping': [0],  # [0, 1]
+        'n_days': [1, 2, 3, 8],
+        'optimizer': ['adam', 'rmsprop']
+    }
+
+    nt.tune(
+        'aapl_industry_2nd_day', 2000, **parameters
+    )
+
+
 def train_aapl_all_sectors():
     model_df = pd.read_pickle("./data/modeling/model_df_cols_dropped.pkl")
     company_df = pd.read_pickle("./data/company.pkl")
@@ -44,6 +92,7 @@ def train_aapl_all_sectors():
     nt.tune(
         'aapl_industry', 2000, **parameters
     )
+
 
 def test():
 
@@ -97,5 +146,6 @@ def test():
 
 
 if __name__ == "__main__":
-    train_aapl_all_sectors()
+    train_aapl_all_sectors_2nd_day()
+    # train_aapl_all_sectors()
     # test()
