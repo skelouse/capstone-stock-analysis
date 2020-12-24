@@ -149,7 +149,7 @@ class NetworkBuilder():
               defined fit arguments already plugged
         """
         self.hp = hp
-        if not hp and dummy_hp:
+        if dummy_hp:
             self.hp = DummyHp()
         elif not hp and not dummy_hp:
             string = "No hp implemented, did you want dummy_hp=True?"
