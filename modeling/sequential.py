@@ -32,10 +32,10 @@ class CustomSequential(Sequential):
         then averages the loss and val_loss to return back
         as the history.
         """
-        # Deleting kwargs['n_days'] so it doesn't get fed
+        # Deleting n_days and validation_data
         # into the model.fit
-        del kwargs['n_days']
         try:
+            del kwargs['n_days']
             del kwargs['validation_data']
         except KeyError:
             pass
