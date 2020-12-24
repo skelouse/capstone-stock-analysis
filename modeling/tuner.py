@@ -48,6 +48,10 @@ class Logger():
         "Runs before each trial"
         pass
 
+    def exit(*args):
+        "Runs on trial end"
+        pass
+
 
 class NetworkTuner(NetworkCreator):
     """
