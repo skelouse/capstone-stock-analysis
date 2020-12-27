@@ -156,10 +156,12 @@ class NetworkCreator():
 
         # Create Time Series Generators
         if self.val_split:
-            self.data_gen, self.train_data_gen, self.test_data_gen, self.val_data_gen = \
+            self.train_data_gen, self.test_data_gen, self.val_data_gen = \
                 self.create_TS_generators(n_days=n_days)
+        elif self.tuning:
+            self.data_gen = self.create_TS_generators(n_days=n_days)
         else:
-            self.data_gen, self.train_data_gen, self.test_data_gen = \
+            self.train_data_gen, self.test_data_gen = \
                 self.create_TS_generators(n_days=n_days)
 
         # Define input shape for model
@@ -332,6 +334,7 @@ class NetworkCreator():
             elif set(self.y_cols).issubset(self.X_cols):
                 if self.verbose:
                     print("targets are in x")
+                self.df = self.df[self.X_cols]
             # elif ((self._contains(self.y_cols, self.X_cols)[1]
             #       - self._contains(self.y_cols, self.X_cols)[0])
             #       + 1 == len(self.y_cols)):
@@ -439,8 +442,8 @@ class NetworkCreator():
             self.X = self.X_scaler.fit_transform(self.X_df)
             self.y = self.y_scaler.fit_transform(self.y_df)
 
-            self.X_train = self.X_scaler.fit_transform(self.X_df_train)
-            self.y_train = self.y_scaler.fit_transform(self.y_df_train)
+            self.X_train = self.X_scaler.transform(self.X_df_train)
+            self.y_train = self.y_scaler.transform(self.y_df_train)
 
             self.X_test = self.X_scaler.transform(self.X_df_test)
             self.y_test = self.y_scaler.transform(self.y_df_test)
@@ -493,10 +496,10 @@ class NetworkCreator():
         # print(self.y.shape)
 
         # Reshape data
-        self.X_reshaped = self.X.reshape((len(self.X),
-                                         self.X_n_features))
-        self.y_reshaped = self.y.reshape((len(self.y),
-                                         self.y_n_features))
+        # self.X_reshaped = self.X.reshape((len(self.X),
+        #                                  self.X_n_features))
+        # self.y_reshaped = self.y.reshape((len(self.y),
+        #                                  self.y_n_features))
 
         # Execution saver
         if self.tuning:
@@ -571,14 +574,12 @@ class NetworkCreator():
         test[TS]
         val[TS] if val_split > 0
         """
-        # Get data generators
-        data = sequence.TimeseriesGenerator(
-            self.X_reshaped,
-            self.y_reshaped,
-            length=self.n_input
-            )
-        # Execution saver
         if self.tuning:
+            data = sequence.TimeseriesGenerator(
+                self.X_reshaped,
+                self.y_reshaped,
+                length=self.n_input
+            )
             return data
 
         train = sequence.TimeseriesGenerator(
@@ -599,9 +600,9 @@ class NetworkCreator():
                 self.y_val_reshaped,
                 length=self.n_input
                 )
-            return data, train, test, val
+            return train, test, val
 
-        return data, train, test
+        return train, test
 
     def load_parameters(self, name, directory="./tuner_directory"):
         """
