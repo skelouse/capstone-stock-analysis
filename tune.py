@@ -147,5 +147,7 @@ def test():
 
 if __name__ == "__main__":
     train_aapl_all_sectors_2nd_day()
+
+    # First day still needs a modify
     # train_aapl_all_sectors()
     # test()
