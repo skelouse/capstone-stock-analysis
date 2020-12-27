@@ -496,13 +496,13 @@ class NetworkCreator():
         # print(self.y.shape)
 
         # Reshape data
-        # self.X_reshaped = self.X.reshape((len(self.X),
-        #                                  self.X_n_features))
-        # self.y_reshaped = self.y.reshape((len(self.y),
-        #                                  self.y_n_features))
 
         # Execution saver
         if self.tuning:
+            self.X_reshaped = self.X.reshape((len(self.X),
+                                             self.X_n_features))
+            self.y_reshaped = self.y.reshape((len(self.y),
+                                             self.y_n_features))
             return 1
 
         self.X_train_reshaped = self.X_train.reshape((len(self.X_train),
