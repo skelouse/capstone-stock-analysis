@@ -11,7 +11,7 @@ from IPython.display import Markdown, display
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import r2_score, ConfusionMatrixDisplay, \
+from sklearn.metrics import mean_absolute_error, ConfusionMatrixDisplay, \
                             confusion_matrix
 
 # Tensorflow / keras
@@ -647,9 +647,9 @@ class NetworkCreator():
         print("removed tuner_parameters\n", tuner_parameters)
         return reg_parameters
 
-    def get_r2_scores_one_y(self, _print=False):
+    def get_mean_absolute_errors_one_y(self, _print=False):
         """
-        Creates the r2 scores for data if there is a single target
+        Creates the mean_absolute_errors for data if there is a single target
         """
         def get_prediction_set(set):
             df_scaled = self.__dict__[f"df_{set}_scaled"]
@@ -676,13 +676,13 @@ class NetworkCreator():
             self.__dict__[f"{set}_y_true"] = self.X_scaler\
                 .inverse_transform(temp_df)[:, self.y_col_idx]
 
-            # set the r2 score from y_true and y_pred
-            # using sklearn.metrics.r2_score
-            r2 = r2_score(self.__dict__[f"{set}_y_true"],
+            # set the mean_absolute_error from y_true and y_pred
+            # using sklearn.metrics.mean_absolute_error
+            mae = mean_absolute_error(self.__dict__[f"{set}_y_true"],
                           self.__dict__[f"{set}_y_pred"])
-            self.__dict__[f"{set}_r2"] = r2
+            self.__dict__[f"{set}_mae"] = mae
             if _print:
-                print(f"{set}_r2:{r2: .2f}")
+                print(f"{set}_mae:{mae: .2f}")
 
         _sets = ['train', 'test']
         if self.val_split:
@@ -691,9 +691,9 @@ class NetworkCreator():
         for _set in _sets:
             get_prediction_set(_set)
 
-    def get_r2_scores_multi_y(self, same=False):
+    def get_mean_absolute_errors_multi_y(self, same=False):
         """
-        Creates the r2 scores for multiple targets whether inside
+        Creates the mean_absolute_errors for multiple targets whether inside
         X_cols or not
 
         Parameters
@@ -729,11 +729,11 @@ class NetworkCreator():
             self.__dict__[f"{set}_y_true"] = y_true
             self.__dict__[f"{set}_y_pred"] = y_pred
 
-            # Calculating r2_score with sklearn.metrics.r2_score
-            r2 = r2_score(y_true, self.__dict__[f"df_predict_{set}"])
+            # Calculating mean_absolute_error with sklearn.metrics.mean_absolute_error
+            mae = mean_absolute_error(y_true, self.__dict__[f"df_predict_{set}"])
 
-            # Setting set_r2
-            self.__dict__[f"{set}_r2"] = r2
+            # Setting set_mae
+            self.__dict__[f"{set}_mae"] = mae
 
         _sets = ['train', 'test']
         if self.val_split:
@@ -742,7 +742,7 @@ class NetworkCreator():
         for _set in _sets:
             get_prediction_set(_set)
 
-    def predict_r2_scores(self, _print=False):
+    def predict_mean_absolute_errors(self, _print=False):
         """
         desc
 
@@ -765,23 +765,23 @@ class NetworkCreator():
 
         # If predicting one column for y
         if (len(self.y_cols) == 1):
-            self.get_r2_scores_one_y(_print)
+            self.get_mean_absolute_errors_one_y(_print)
 
         # If predicting multiple columns for y
         elif self.y_scaler:
-            self.get_r2_scores_multi_y()
+            self.get_mean_absolute_errors_multi_y()
 
         # if predicting self with self
         else:
-            self.get_r2_scores_multi_y(same=True)
+            self.get_mean_absolute_errors_multi_y(same=True)
 
-    def display_r2_scores(self, plot=False):
+    def display_mean_absolute_errors(self, plot=False):
         if not plot:
-            print("-"*20, "\nr2 scores\n" + "-"*20)
-            print(f"Training:{self.train_r2:.2f}")
-            print(f"Testing:{self.test_r2:.2f}")
+            print("-"*20, "\nmean_absolute_errors\n" + "-"*20)
+            print(f"Training:{self.train_mae:.2f}")
+            print(f"Testing:{self.test_mae:.2f}")
             if self.val_split:
-                print(f"Validation:{self.val_r2:.2f}")
+                print(f"Validation:{self.val_mae:.2f}")
         else:
             return self.plot_predictions()
 
@@ -838,7 +838,7 @@ class NetworkCreator():
             _true = self.__dict__[f"{_set}_y_true"]
             _pred = self.__dict__[f"{_set}_y_pred"]
             _preds.append(_pred)
-            _r2 = self.__dict__[f"{_set}_r2"]
+            _mae = self.__dict__[f"{_set}_mae"]
             ax1.plot(_idx, _real, marker=marker,
                      color='C0', label='Real Price',
                      markersize=markersize)
@@ -854,8 +854,8 @@ class NetworkCreator():
 
             # Plot styling
             #    Left side
-            ax1.set_title(f"""{_set.title()} data with an r2 of: {
-                            _r2: .2f}""", fontsize=20)
+            ax1.set_title(f"""{_set.title()} data with an mae of: {
+                            _mae: .2f}""", fontsize=20)
             ax1.legend()
             length = len(_X)
 
@@ -973,8 +973,8 @@ class NetworkCreator():
         func = (lambda x: 1 if x > 0 else 0)
         df['true'] = df['true'].apply(func)
         df['pred'] = df['pred'].apply(func)
-        r2 = r2_score(df['true'], df['pred'])
-        return confusion_matrix(df['true'], df['pred'], normalize='all'), r2
+        mae = mean_absolute_error(df['true'], df['pred'])
+        return confusion_matrix(df['true'], df['pred'], normalize='all'), mae
 
     def build_classification(self, cm, ax, classes=['Down', 'Up']):
         """
@@ -1005,9 +1005,9 @@ class NetworkCreator():
         fig, axes = plt.subplots(
             figsize=(15, 4), ncols=n, tight_layout=True)
         for (_set, title), ax in zip(title_map.items(), axes):
-            cm, r2 = self.classify_set(_set)
+            cm, mae = self.classify_set(_set)
             self.build_classification(cm, ax=ax)
-            ax.set_title(f"{title}\nr2: {r2: .2f}",
+            ax.set_title(f"{title}\nmae: {mae: .2f}",
                          fontsize=15)
         return fig
 
@@ -1098,7 +1098,7 @@ class NetworkCreator():
 
         # Predictions
         header()
-        self.predict_r2_scores()
+        self.predict_mean_absolute_errors()
         pred_fig = self.plot_predictions()
         plt.show()
 
