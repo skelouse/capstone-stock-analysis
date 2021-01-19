@@ -1,4 +1,5 @@
 from functools import partial
+from IPython.display import display
 
 from keras import backend as K
 from tensorflow.python.keras.layers.noise import GaussianNoise
@@ -319,6 +320,8 @@ class NetworkBuilder():
         optimizer = self.hp.Choice('optimizer', optimizer)
         self.model.compile(optimizer=optimizer,
                            loss='mse')
+        if self.creator.verbose:
+            display(self.model.summary())
 
     def make_fit(
         self,

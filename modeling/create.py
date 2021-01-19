@@ -98,7 +98,6 @@ class NetworkCreator():
     >>> plt.legend(['train', 'test'])
     >>> plt.show()
     """
-    # TODO add splitting df like df_train/test/val
     def __init__(self, df, X_cols, y_cols, n_days,
                  test_split=0.3, val_split=0.05,
                  tuning=False, verbose=True):
@@ -106,7 +105,6 @@ class NetworkCreator():
         self.df = df
         self.X_cols = X_cols
         self.y_cols = y_cols
-        # TODO add checks that splits are between 0 and 1
         self.test_split = test_split
         self.val_split = val_split
         self.tuning = tuning
@@ -493,11 +491,9 @@ class NetworkCreator():
             self.y_n_features = 1
         else:
             self.y_n_features = self.y.shape[1]
-        # print(self.y.shape)
 
         # Reshape data
-
-        # Execution saver
+        #   Execution saver
         if self.tuning:
             self.X_reshaped = self.X.reshape((len(self.X),
                                              self.X_n_features))
